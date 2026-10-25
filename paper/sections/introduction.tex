@@ -1,0 +1,57 @@
+% =====================================================================
+% Introduction + Contribution statement
+% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Parameter-efficient fine-tuning with LoRA~\citep{hu2022lora} has made it cheap
+to specialize a base model for a task: practitioners maintain libraries of
+adapters layered over a frozen foundation checkpoint. But base models are not
+static. When a vendor ships a new version of a family --- Gemma~3 to Gemma~4,
+Qwen2 to Qwen2.5 --- every adapter trained on the old base must, in current
+practice, be retrained from scratch on the original task data. That data is
+often private, expensive to re-collect, or simply gone, and the retraining cost
+scales with the number of adapters an organization maintains.
+
+We ask whether a fine-tuning delta can instead be treated as a \emph{portable
+object}: transplanted onto a new base version without retraining on task data.
+The obstacle is that a LoRA adapter is entangled with the base model's
+representation space (\S\ref{sec:problem}) --- it reads and writes in the old
+model's activation geometry, which the new version does not preserve. Existing
+weight-space transfer methods do not address this: task arithmetic and task
+vectors~\citep{ilharco2023taskvectors}, TIES-Merging~\citep{yadav2023ties}, and
+DARE~\citep{yu2024dare} all assume a \emph{fixed, shared} representation space
+across the weights being combined, and break under version drift.
+
+Our framing is that cross-version portability is a \emph{representational
+alignment} problem. We measure the drift between base versions, learn a
+lightweight linear map between their activation spaces from a small unlabeled
+anchor set, and use it to re-express the adapter in the new model's geometry
+while preserving its low-rank structure.
+
+\paragraph{Contributions.}
+\begin{itemize}
+  \item \textbf{A novel problem: cross-version adapter portability.} We
+        formalize transplanting a LoRA adapter from base $M_v$ onto a
+        same-family successor $M_{v+1}$ using only the two base checkpoints, the
+        adapter, and a small unlabeled anchor set --- no task data and no
+        retraining (\S\ref{sec:problem}). To our knowledge this problem is
+        unaddressed by prior model-merging or task-arithmetic work.
+  \item \textbf{An empirical study of representational drift across model
+        versions.} Using CKA over anchor activations, we characterize how, where,
+        and how much representation geometry shifts between successive base
+        versions, and show this drift predicts the failure of naive adapter
+        transfer (\S\ref{sec:drift}).
+  \item \textbf{A simple, closed-form alignment method.} We derive a per-module
+        linear transplant $\Delta W' = P^{\mathrm{out}} \Delta W\, P^{\mathrm{in}}$
+        (ridge / orthogonal-Procrustes) that preserves rank $r$ and thus adds no
+        inference cost, fit from a single anchor-set forward pass through each
+        base model (\S\ref{sec:method}).
+  \item \textbf{Evaluation across tasks and a version pair.} We evaluate on
+        2--3 fine-tuning tasks and 1--2 family version pairs against a naive-transfer
+        lower bound and a retrained oracle upper bound, reporting the fraction of
+        the oracle--naive gap recovered at a fraction of oracle compute
+        (\S\ref{sec:experiments}).
+  \item \textbf{Open release.} We release code, anchor sets, and the alignment
+        maps to support reproducibility and follow-on work (\S\ref{sec:repro}).
+\end{itemize}

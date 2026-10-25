@@ -1,0 +1,99 @@
+% =====================================================================
+% Cross-Version Adapter Portability via Representational Alignment
+% ICLR 2027 submission skeleton
+% Compile: latexmk -pdf main.tex   (uses iclr2027 style if present,
+%          falls back to article so the skeleton always builds)
+% =====================================================================
+\documentclass[11pt]{article}
+
+% --- Try ICLR style if dropped in; otherwise stay self-contained ------
+\IfFileExists{iclr2027_conference.sty}{%
+  \usepackage{iclr2027_conference}
+}{%
+  \usepackage[margin=1in]{geometry}
+}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\title{Cross-Version Adapter Portability via Representational Alignment}
+\author{Anonymous}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+LoRA adapters are entangled with the representation space of the base model
+they were trained on, so a new base-model version forces a full retrain on the
+original task data. We formalize \emph{cross-version adapter portability}:
+transplanting a LoRA adapter from base $M_v$ onto a same-family successor
+$M_{v+1}$ using only the two base checkpoints, the adapter, and a small
+\emph{unlabeled} anchor set --- no task data, no retraining. We frame this as a
+representational alignment problem, empirically characterize the geometric drift
+between base versions with CKA, and derive a closed-form per-module linear
+transplant $\Delta W' = P^{\mathrm{out}}\Delta W\,P^{\mathrm{in}}$ that preserves
+the adapter's low-rank structure and adds no inference cost. Across
+%TODO: fill final numbers
+$k$ fine-tuning tasks and a family version pair, alignment recovers a substantial
+fraction of the gap between naive transfer and a retrained oracle at a small
+fraction of oracle compute.
+\end{abstract}
+
+\input{sections/introduction}
+
+\section{Related Work}
+\label{sec:related}
+% Task arithmetic / task vectors (Ilharco et al. 2023); TIES-Merging (Yadav et al.
+% 2023); DARE (Yu et al. 2024) -- all assume shared/fixed representation space.
+% Model stitching (Lenc & Vedaldi 2015; Bansal et al. 2021) -- learns alignment
+% between layer reps but for stitching, not weight-level adapter transfer.
+% Representation similarity: CKA (Kornblith et al. 2019); Platonic Representation
+% Hypothesis (Huh et al. 2024). LoRA/PEFT (Hu et al. 2022). Knowledge distillation
+% (requires inference + task signal). Position: none address cross-version
+% weight-level adapter transfer without task data.
+
+\input{sections/problem_formulation}
+
+\section{Method: Linear Representational Alignment}
+\label{sec:method}
+% Restate the transplant from the formulation; algorithm box: (1) run anchors
+% through both bases, cache per-module in/out activations; (2) solve ridge /
+% Procrustes for P^in, P^out per module; (3) apply Eq. (transplant); (4) load
+% T(A) onto M_{v+1}. Variants: ridge vs orthogonal; shared-vs-per-layer maps;
+% subset of modules; optional small nonlinear (MLP) map ablation.
+
+\section{Representational Drift Across Versions}
+\label{sec:drift}
+% Empirical study: per-module CKA drift between M_v and M_{v+1} over the anchor
+% set; drift vs depth; drift vs naive-transfer degradation (correlation plot).
+
+\section{Experiments}
+\label{sec:experiments}
+% Setup: model pair(s), tasks, anchor set, metrics. Main table: naive | linear
+% (ridge) | linear (Procrustes) | oracle, per task, with % gap recovered and
+% compute. Ablations live in their own section.
+
+\section{Ablations}
+\label{sec:ablations}
+% Anchor set size; ridge lambda; orthogonal vs unconstrained; which modules to
+% align; per-layer vs shared map; linear vs nonlinear map; sensitivity to drift
+% magnitude.
+
+\section{Limitations}
+\label{sec:limitations}
+% Differing tokenizers / hidden dims / cross-family transfer out of scope
+% (\S\ref{sec:assumptions}); single family pair; generative-quality eval caveats.
+
+\section{Reproducibility}
+\label{sec:repro}
+% Code, anchor sets, fitted maps released. Lincoln Lab public-release clearance.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

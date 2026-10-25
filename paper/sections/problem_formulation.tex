@@ -1,0 +1,140 @@
+% =====================================================================
+% Problem Formulation
+% Cross-Version Adapter Portability via Representational Alignment
+% =====================================================================
+\section{Problem Formulation}
+\label{sec:problem}
+
+\subsection{Setup and Notation}
+
+Let $\mathcal{F}$ denote a model \emph{family} (e.g.\ Gemma, Qwen) and let
+$M_v$ and $M_{v+1}$ be two \emph{base} (pre-trained, instruction-tuned, or
+foundation) checkpoints from $\mathcal{F}$ released at successive versions
+$v$ and $v{+}1$. The two checkpoints typically share architecture and
+tokenizer but differ in weights due to retraining; we make no assumption
+that they share a representation space.
+
+A \emph{LoRA adapter}~\citep{hu2022lora} $A$ trained on top of $M_v$ is a set
+of low-rank updates over a collection of adapted linear modules
+$\ell \in \mathcal{L}$. Module $\ell$ realizes a linear map with frozen
+weight $W_\ell \in \mathbb{R}^{d^{\mathrm{out}}_\ell \times d^{\mathrm{in}}_\ell}$,
+and LoRA augments it with
+\begin{equation}
+  \Delta W_\ell \;=\; \tfrac{\alpha}{r}\, B_\ell A_\ell,
+  \qquad
+  B_\ell \in \mathbb{R}^{d^{\mathrm{out}}_\ell \times r},\;
+  A_\ell \in \mathbb{R}^{r \times d^{\mathrm{in}}_\ell},
+\label{eq:lora}
+\end{equation}
+with rank $r \ll \min(d^{\mathrm{in}}_\ell, d^{\mathrm{out}}_\ell)$ and scale
+$\alpha$. The fine-tuned model is denoted $M_v \oplus A$, i.e.\ each adapted
+module computes $y = (W_\ell + \Delta W_\ell)\,x$.
+
+The adapter $A$ is trained on a task dataset $\mathcal{D}_{\mathrm{task}}$
+(potentially private, expensive, or no longer available). We additionally
+assume access to a small, \emph{unlabeled} \emph{anchor} set
+$\mathcal{D}_{\mathrm{anchor}}$ ($|\mathcal{D}_{\mathrm{anchor}}| \ll
+|\mathcal{D}_{\mathrm{task}}|$, e.g.\ a few thousand generic text sequences)
+that can be passed through both base checkpoints.
+
+\subsection{Objective}
+
+Let $\mathcal{P}(M \oplus A)$ be task performance of model $M$ equipped with
+adapter $A$. We seek a transformation $T$ that transplants $A$ from $M_v$ onto
+$M_{v+1}$ \emph{without access to $\mathcal{D}_{\mathrm{task}}$}:
+\begin{equation}
+  T^\star \;=\;
+  \arg\max_{T \in \mathcal{T}}\;
+  \mathcal{P}\!\left(M_{v+1} \oplus T(A)\right),
+  \qquad
+  \text{using only } M_v,\, M_{v+1},\, A,\, \mathcal{D}_{\mathrm{anchor}}.
+\label{eq:objective}
+\end{equation}
+We compare against two reference points: the \emph{naive transfer} baseline
+$T = \mathrm{id}$ (drop $A$ onto $M_{v+1}$ unchanged), and the \emph{oracle}
+$A^\star = \arg\max_A \mathcal{P}(M_{v+1}\oplus A)$ obtained by retraining on
+$\mathcal{D}_{\mathrm{task}}$. A successful $T$ closes the gap between naive
+transfer and the oracle at a small fraction of the oracle's compute, and
+without task labels.
+
+\subsection{Why Naive Transfer Fails: Representational Drift}
+
+Equation~\eqref{eq:lora} shows the adapter acts on the module's \emph{input}
+activation and writes into its \emph{output} activation. Concretely, for input
+$x$ in the input representation space of $M_v$, the adapter contributes
+$\tfrac{\alpha}{r} B_\ell (A_\ell x)$. The adapter is therefore \emph{bound}
+to the geometry of $M_v$'s activation spaces: $A_\ell$ reads coordinates in
+$M_v$'s input basis and $B_\ell$ writes coordinates in $M_v$'s output basis.
+
+When the same module's activation geometry differs in $M_{v+1}$, the directions
+$A_\ell$ reads from and $B_\ell$ writes to no longer correspond to the same
+semantic features, so the update is applied in the wrong basis. We quantify
+this \emph{representational drift} per module with linear Centered Kernel
+Alignment~\citep{kornblith2019cka}: collecting input activation matrices
+$H^{v}_\ell, H^{v+1}_\ell \in \mathbb{R}^{N \times d^{\mathrm{in}}_\ell}$ over
+$\mathcal{D}_{\mathrm{anchor}}$ ($N$ tokens),
+\begin{equation}
+  \mathrm{drift}_\ell \;=\; 1 - \mathrm{CKA}\!\left(H^{v}_\ell, H^{v+1}_\ell\right),
+  \qquad
+  \mathrm{CKA}(X,Y) = \frac{\lVert Y^\top X \rVert_F^2}
+       {\lVert X^\top X \rVert_F \,\lVert Y^\top Y \rVert_F}.
+\label{eq:cka}
+\end{equation}
+A central empirical claim of this paper (\S\ref{sec:drift}) is that
+$\mathrm{drift}_\ell > 0$ across versions and grows with depth, and that this
+drift predicts the failure of naive transfer.
+
+\subsection{Representational Alignment}
+
+We restrict the transformation class $\mathcal{T}$ to act \emph{per module}
+through a pair of linear maps that re-express the adapter in $M_{v+1}$'s
+activation geometry. Let
+$P^{\mathrm{in}}_\ell \in \mathbb{R}^{d^{\mathrm{in}}_\ell \times d^{\mathrm{in}}_\ell}$
+map an input activation in $M_{v+1}$'s space to the corresponding point in
+$M_v$'s space, and
+$P^{\mathrm{out}}_\ell \in \mathbb{R}^{d^{\mathrm{out}}_\ell \times d^{\mathrm{out}}_\ell}$
+map an output activation in $M_v$'s space to $M_{v+1}$'s space. The transplanted
+update is
+\begin{equation}
+  \Delta W'_\ell
+  \;=\; P^{\mathrm{out}}_\ell \, \Delta W_\ell \, P^{\mathrm{in}}_\ell
+  \;=\; \tfrac{\alpha}{r}
+        \underbrace{\left(P^{\mathrm{out}}_\ell B_\ell\right)}_{B'_\ell}
+        \underbrace{\left(A_\ell P^{\mathrm{in}}_\ell\right)}_{A'_\ell},
+\label{eq:transplant}
+\end{equation}
+so $T(A)_\ell = (B'_\ell, A'_\ell)$ \emph{preserves the rank-$r$ LoRA
+structure}: portability costs no extra inference parameters. Intuitively,
+$A'_\ell$ first pulls an $M_{v+1}$ input back into $M_v$'s basis, the original
+adapter operates there, and $P^{\mathrm{out}}_\ell$ pushes the result forward
+into $M_{v+1}$'s output basis.
+
+\paragraph{Fitting the maps.}
+The maps are estimated from anchor activations only. Passing
+$\mathcal{D}_{\mathrm{anchor}}$ through both checkpoints yields paired
+input-activation matrices $H^{v}_\ell, H^{v+1}_\ell$ (and analogously output
+matrices). We solve a ridge-regularized least-squares problem
+\begin{equation}
+  P^{\mathrm{in}}_\ell
+  \;=\;
+  \arg\min_{P}\;
+  \big\lVert H^{v}_\ell - H^{v+1}_\ell P^\top \big\rVert_F^2
+  + \lambda \lVert P \rVert_F^2 ,
+\label{eq:procrustes}
+\end{equation}
+optionally constraining $P$ to be orthogonal (the orthogonal Procrustes
+solution $P = UV^\top$ from the SVD $H_v^\top H_{v+1} = U\Sigma V^\top$), which
+encodes the prior that version updates are approximately rotations of a shared
+feature space. $P^{\mathrm{out}}_\ell$ is fit symmetrically with the roles of
+$v$ and $v{+}1$ swapped. Both are closed-form, require a single forward pass of
+$\mathcal{D}_{\mathrm{anchor}}$ through each base model, and never touch
+$\mathcal{D}_{\mathrm{task}}$.
+
+\subsection{Assumptions and Scope}
+\label{sec:assumptions}
+We assume (i) $M_v$ and $M_{v+1}$ share architecture and adapted-module
+dimensions (the common case for minor version bumps within a family), and
+(ii) a shared or alignable tokenizer so that $\mathcal{D}_{\mathrm{anchor}}$
+induces token-aligned activations. We treat differing tokenizers, differing
+hidden dimensions, and cross-family transfer as out of scope for this paper and
+return to them in \S\ref{sec:limitations}.

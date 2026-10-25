@@ -1,0 +1,39 @@
+# Stronger CPU run: 150-step adapters so there is real learned signal to
+# transplant (the tiny 20-step run only recovered 11% because it was
+# undertrained). Fresh ROOT (runs/qwen05b_agnews_s150) so it does NOT reuse the
+# tiny run's stale adapters/results. Launch:
+#   nice -n 19 env STEPS=150 MAXLEN=64 THREADS=4 \
+#     CFG=configs/qwen05b_agnews_s150.yaml ROOT=runs/qwen05b_agnews_s150 \
+#     bash experiments/run_full_cpu.sh
+pair:
+  family: qwen
+  base_v: Qwen/Qwen2-0.5B
+  base_v_next: Qwen/Qwen2.5-0.5B
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+anchors:
+  dataset: Salesforce/wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  n_sequences: 32
+  max_length: 64
+  seed: 0
+
+align:
+  method: ridge
+  ridge_lambda: 1.0
+  per_layer: true
+  center: true
+
+tasks:
+  - name: agnews
+    adapter_path: runs/qwen05b_agnews_s150/adapters_v/agnews
+    eval_dataset: fancyzhx/ag_news
+    eval_split: test
+    metric: perplexity
+    text_field: text
+    max_eval_samples: 80
+
+output_dir: runs/qwen05b_agnews_s150
+device: cpu
+dtype: float32

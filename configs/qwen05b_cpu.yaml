@@ -1,0 +1,37 @@
+# CPU-feasible REAL drift study: Qwen2-0.5B -> Qwen2.5-0.5B.
+# Ungated (Apache-2.0), ~1GB each, dim-matched (hidden 896, 24 layers, same
+# tokenizer 151936). Small anchor set + fp32 so it runs on this CPU box.
+# Used for run_cka_drift.py (no training, no adapter needed).
+pair:
+  family: qwen
+  base_v: Qwen/Qwen2-0.5B
+  base_v_next: Qwen/Qwen2.5-0.5B
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+anchors:
+  dataset: Salesforce/wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  n_sequences: 64
+  max_length: 96
+  seed: 0
+
+align:
+  method: ridge
+  ridge_lambda: 1.0
+  per_layer: true
+  center: true
+
+# drift script ignores tasks; placeholder to satisfy the config loader.
+tasks:
+  - name: placeholder
+    adapter_path: runs/none
+    eval_dataset: wikitext
+    eval_split: validation
+    metric: perplexity
+    text_field: text
+    max_eval_samples: 1
+
+output_dir: runs/qwen05b_cpu
+device: cpu
+dtype: float32

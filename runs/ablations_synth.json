@@ -1,0 +1,218 @@
+[
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.9336809813976288
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.7875481098890305
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.38852758705616
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.7998303025960922
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.9394083768129349
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.8906544595956802
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.6133925318717957
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.8107690811157227
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.8438104093074799
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.9285184144973755
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.7922057211399078
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "recovery": 0.8144571930170059
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "recovery": -2.43374964594841
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.0996304452419281
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.29692551493644714
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.049415603280067444
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "recovery": -3.508878171443939
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.27119696140289307
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.30768460035324097
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.0859472006559372
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "recovery": -1.550096482038498
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.3040749132633209
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.3140132278203964
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "recovery": 0.09735630452632904
+    }
+  }
+]

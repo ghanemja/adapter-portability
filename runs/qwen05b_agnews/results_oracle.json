@@ -1,0 +1,6 @@
+{
+  "agnews": {
+    "metric": "perplexity",
+    "value": 31.51807865196354
+  }
+}

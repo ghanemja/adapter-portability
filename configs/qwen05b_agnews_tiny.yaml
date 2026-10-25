@@ -1,0 +1,36 @@
+# Tiny, low-impact CPU variant of qwen05b_agnews_cpu.yaml.
+# Smaller anchors + eval so the whole pipeline finishes in ~30-40 min at
+# low priority (nice) with a few threads free for the laptop. Same adapter
+# paths as the standard run (ROOT=runs/qwen05b_agnews).
+pair:
+  family: qwen
+  base_v: Qwen/Qwen2-0.5B
+  base_v_next: Qwen/Qwen2.5-0.5B
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+anchors:
+  dataset: Salesforce/wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  n_sequences: 16
+  max_length: 32
+  seed: 0
+
+align:
+  method: ridge
+  ridge_lambda: 1.0
+  per_layer: true
+  center: true
+
+tasks:
+  - name: agnews
+    adapter_path: runs/qwen05b_agnews/adapters_v/agnews
+    eval_dataset: fancyzhx/ag_news
+    eval_split: test
+    metric: perplexity
+    text_field: text
+    max_eval_samples: 40
+
+output_dir: runs/qwen05b_agnews
+device: cpu
+dtype: float32

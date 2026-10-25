@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+runs/
+*.pt
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.pdf
+# keep small result artifacts, drop weights/caches
+!runs/
+runs/**
+!runs/*.json
+!runs/*.log
+!runs/*/
+!runs/*/*.json

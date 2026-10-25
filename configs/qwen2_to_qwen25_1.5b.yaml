@@ -1,0 +1,44 @@
+# Primary fast-iteration pair: Qwen2-1.5B -> Qwen2.5-1.5B.
+# Same architecture, same tokenizer (151k), same hidden size across the version
+# bump -> isolates pure representational drift (no tokenizer/dim confounds).
+pair:
+  family: qwen
+  base_v: Qwen/Qwen2-1.5B
+  base_v_next: Qwen/Qwen2.5-1.5B
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+anchors:
+  dataset: Salesforce/wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  n_sequences: 2000
+  max_length: 256
+  seed: 0
+
+align:
+  method: ridge          # ridge | procrustes | identity
+  ridge_lambda: 1.0
+  per_layer: true
+  center: true
+
+# Each task adapter is trained on M_v (Qwen2-1.5B) ahead of time; see
+# experiments/train_lora.py. eval_dataset measures held-out task quality.
+tasks:
+  - name: gsm8k
+    adapter_path: runs/adapters_v/gsm8k
+    eval_dataset: gsm8k
+    eval_split: test
+    metric: accuracy          # numeric exact-match via greedy decode
+    text_field: question
+    max_eval_samples: 300
+  - name: samsum
+    adapter_path: runs/adapters_v/samsum
+    eval_dataset: samsum
+    eval_split: test
+    metric: perplexity
+    text_field: dialogue
+    max_eval_samples: 300
+
+output_dir: runs/qwen2_to_qwen25_1.5b
+device: cuda          # cpu | mps for laptop iteration
+dtype: bfloat16
