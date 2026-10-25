@@ -1,6 +1,6 @@
 # HANDOFF — Cross-Version Adapter Portability via Representational Alignment
 
-Last updated: 2026-10-25. Repo: `/Users/janelle/Documents/finetune` (not a git repo).
+Last updated: 2026-10-25. Repo: `/Users/janelle/Documents/finetune`. Git initialized 2026-10-25 on `main`; no remote yet (intended: private `ghanemja/adapter-portability`). `.gitignore` excludes `.venv/`, model weights and `runs/**` except small `*.json`/`*.log` result files.
 Author: Janelle Ghanem. This file is the single source of truth for project state. Read it before touching anything.
 
 ---
@@ -198,7 +198,7 @@ Sections writable today with zero compute: 2, 4, 5, 7 (synthetic half), 8.
 
 ## 8. Known gotchas
 
-- Not a git repo. Initialize before GPU work so runs are reproducible.
+- Git repo exists locally, no remote pushed yet. Push to private `ghanemja/adapter-portability` before cloud/GPU work.
 - `README.md` predates the novelty re-check and overclaims. Fix or delete before any release.
 - Local machine: CPU only, 8.5 GB RAM, torch defaults to 2 threads. 0.5B activation extraction ≈ minutes per 64 sequences. Training 1–3 min/step. Not viable beyond smoke tests.
 - Background jobs die on session teardown.
