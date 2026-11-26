@@ -33,32 +33,38 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--method", default=None, help="override align.method")
+    ap.add_argument("--lam", type=float, default=None, help="override align.ridge_lambda")
+    ap.add_argument("--tag", default="",
+                    help="suffix for outputs, e.g. lam0.1 -> results_aligned_ridge_lam0.1.json")
     args = ap.parse_args()
     cfg = load_config(args.config)
     method = args.method or cfg.align.method
+    lam = cfg.align.ridge_lambda if args.lam is None else args.lam
+    name = method + (f"_{args.tag}" if args.tag else "")
 
     acts_v = cache_activations(cfg, "v", cfg.pair.base_v)
     acts_v_next = cache_activations(cfg, "v_next", cfg.pair.base_v_next)
     maps = fit_module_maps(acts_v, acts_v_next, method=method,
-                           lam=cfg.align.ridge_lambda, center=cfg.align.center)
-    print(f"[align] fit {len(maps)} module maps via {method}")
+                           lam=lam, center=cfg.align.center)
+    print(f"[align] fit {len(maps)} module maps via {method} (lambda={lam})")
 
     base, tok = load_base(cfg.pair.base_v_next, cfg.device, cfg.dtype)
     results = {}
     for task in cfg.tasks:
         state = load_lora_state(task.adapter_path)
         new_state = transplant_adapter(state, maps)
-        out_dir = str(cfg.out("adapters", f"{task.name}_{method}"))
+        out_dir = str(cfg.out("adapters", f"{task.name}_{name}"))
         write_transplanted_adapter(task.adapter_path, new_state, out_dir)
         model = attach_adapter(base, out_dir)
         results[task.name] = evaluate(model, tok, task, cfg.device)
-        print(f"[align:{method}] {task.name}: {results[task.name]}")
-        del model
+        results[task.name]["lambda"] = lam
+        print(f"[align:{name}] {task.name}: {results[task.name]}")
+        model.unload()
         torch.cuda.empty_cache()
 
-    out = cfg.out(f"results_aligned_{method}.json")
+    out = cfg.out(f"results_aligned_{name}.json")
     out.write_text(json.dumps(results, indent=2))
-    print(f"[align:{method}] -> {out}")
+    print(f"[align:{name}] -> {out}")
 
 
 if __name__ == "__main__":

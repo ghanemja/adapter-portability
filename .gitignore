@@ -16,3 +16,4 @@ runs/**
 !runs/*.log
 !runs/*/
 !runs/*/*.json
+paper/tables/

@@ -32,7 +32,8 @@ def cache_activations(cfg, which: str, model_id: str):
     model, tok = load_base(model_id, cfg.device, cfg.dtype)
     loader = load_anchor_loader(cfg.anchors, tok)
     acts = extract_activations(model, loader, cfg.pair.target_modules,
-                               device=cfg.device, seed=cfg.anchors.seed)
+                               device=cfg.device, max_tokens=cfg.anchors.max_tokens,
+                               seed=cfg.anchors.seed)
     torch.save(acts, cache)
     del model
     torch.cuda.empty_cache()

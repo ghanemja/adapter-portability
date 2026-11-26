@@ -28,6 +28,7 @@ class AnchorConfig:
     n_sequences: int = 2000
     max_length: int = 256
     seed: int = 0
+    max_tokens: int = 50_000                  # kept anchor tokens per module (RAM = 2*modules*max_tokens*d*4B)
 
 
 @dataclass
@@ -44,9 +45,15 @@ class TaskConfig:
     adapter_path: str                         # LoRA adapter trained on M_v
     eval_dataset: str                         # HF dataset id for evaluation
     eval_split: str = "validation"
-    metric: str = "perplexity"                # "perplexity" | "accuracy"
+    metric: str = "perplexity"                # perplexity | completion_perplexity | accuracy | exact_match
     text_field: str = "text"
     max_eval_samples: int = 500
+    eval_subset: str | None = None            # HF dataset config name (e.g. "main" for gsm8k)
+    prompt_template: str | None = None        # format string over row fields; default "{text_field}\nAnswer:"
+    answer_field: str | None = None           # gold completion field (default "answer")
+    label_names: list[str] | None = None      # map int class ids -> label words
+    max_new_tokens: int | None = None         # generation budget for accuracy / exact_match
+    eval_batch_size: int = 16                 # prompts per generate() call (left-padded)
 
 
 @dataclass

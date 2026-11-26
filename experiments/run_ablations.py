@@ -53,15 +53,24 @@ def filter_modules(acts, substrings):
 
 
 def shared_module_maps(acts_v, acts_v1, method, lam, center):
-    """One P_in/P_out fit on activations stacked across all (equal-dim) modules,
-    then reused for every module."""
-    in_v = torch.cat([a["in"] for a in acts_v.values()], 0)
-    in_v1 = torch.cat([acts_v1[k]["in"] for k in acts_v], 0)
-    out_v = torch.cat([a["out"] for a in acts_v.values()], 0)
-    out_v1 = torch.cat([acts_v1[k]["out"] for k in acts_v], 0)
-    P_in = fit_map(in_v1, in_v, method, lam, center)
-    P_out = fit_map(out_v, out_v1, method, lam, center)
-    return {k: {"P_in": P_in, "P_out": P_out} for k in acts_v}
+    """One P_in/P_out fit on activations stacked across all modules that share
+    (d_in, d_out), then reused for every module in that group. Real models have
+    several groups (e.g. q/o_proj out=896 vs k/v_proj out=128 under GQA), so a
+    single global map is fit per shape group rather than per module."""
+    groups = {}
+    for k, a in acts_v.items():
+        groups.setdefault((a["in"].shape[1], a["out"].shape[1]), []).append(k)
+    maps = {}
+    for keys in groups.values():
+        in_v = torch.cat([acts_v[k]["in"] for k in keys], 0)
+        in_v1 = torch.cat([acts_v1[k]["in"] for k in keys], 0)
+        out_v = torch.cat([acts_v[k]["out"] for k in keys], 0)
+        out_v1 = torch.cat([acts_v1[k]["out"] for k in keys], 0)
+        P_in = fit_map(in_v1, in_v, method, lam, center)
+        P_out = fit_map(out_v, out_v1, method, lam, center)
+        for k in keys:
+            maps[k] = {"P_in": P_in, "P_out": P_out}
+    return maps
 
 
 def build_maps(acts_v, acts_v1, cfg):
@@ -180,9 +189,12 @@ def main():
         maps = build_maps(av, av1, c)
         sc = scorer(maps)
         rows.append({**c, "score": sc})
-        s = sc.get("recovery", next(iter(sc.values())))
+        if "recovery" in sc:
+            shown = f"{sc['recovery']:+.4f}"
+        else:                                   # real mode: one value per task
+            shown = "  ".join(f"{k}={v:.4f}" for k, v in sc.items())
         print(f"{c['method']:>10}{c['lam']:>8.0e}{c['anchor_tokens']:>9}"
-              f"{c['map_scope']:>11}   {s:+.4f}")
+              f"{c['map_scope']:>11}   {shown}")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(rows, indent=2))

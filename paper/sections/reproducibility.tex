@@ -1,0 +1,24 @@
+% =====================================================================
+% Reproducibility
+% =====================================================================
+\section{Reproducibility}
+\label{sec:repro}
+
+All code is released, together with the anchor-set specification, the fitted
+per-module maps for every model pair, and the source, transplanted, and oracle
+adapters. The anchor set is fully determined by a public corpus
+(WikiText-2-raw, training split), a shuffle seed, the number of passages, the
+truncation length, and the number of kept tokens per module; these five values
+are stored in each run's configuration file. Every experiment in
+\S\ref{sec:experiments} is produced by one script that runs end to end on a
+single 40\,GB GPU, skips stages whose outputs exist, and resumes interrupted
+adapter training from the last complete checkpoint; the CPU-scale results in
+\S\ref{sec:drift} and the controlled-drift ablations in
+\S\ref{sec:ablations:synth} run on a laptop CPU. The tables in
+\S\ref{sec:experiments} are generated from the saved per-condition result
+files by a script rather than transcribed. Models are public Hugging Face
+checkpoints (\texttt{Qwen/Qwen2-1.5B}, \texttt{Qwen/Qwen2.5-1.5B},
+\texttt{Qwen/Qwen2-0.5B}, \texttt{Qwen/Qwen2.5-0.5B}); evaluation data are the
+public test splits of GSM8K, AG News, and SAMSum.
+%TODO(release): institutional public-release clearance note (Lincoln Lab) and
+% the code URL go here once cleared.

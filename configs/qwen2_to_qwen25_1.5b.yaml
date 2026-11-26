@@ -1,6 +1,15 @@
-# Primary fast-iteration pair: Qwen2-1.5B -> Qwen2.5-1.5B.
-# Same architecture, same tokenizer (151k), same hidden size across the version
-# bump -> isolates pure representational drift (no tokenizer/dim confounds).
+# Primary GPU pair: Qwen2-1.5B -> Qwen2.5-1.5B.
+# Same architecture, same tokenizer (151k), same hidden size (1536) across the
+# version bump -> isolates pure representational drift (no tokenizer/dim
+# confounds). Driven end to end by experiments/run_gpu_1p5b.sh.
+#
+# Three tasks chosen so the oracle (LoRA trained on M_{v+1}) lift over the base
+# is LARGE, which makes gap-recovered a meaningful metric:
+#   gsm8k   : greedy-decode numeric exact match          (higher is better)
+#   agnews  : 4-way topic label generated as a word      (higher is better)
+#   samsum  : perplexity of the gold summary given the dialogue (lower is better)
+# Prompt templates here must match the --template used by train_lora.py in
+# run_gpu_1p5b.sh (prompt + " {answer}").
 pair:
   family: qwen
   base_v: Qwen/Qwen2-1.5B
@@ -11,34 +20,50 @@ anchors:
   dataset: Salesforce/wikitext
   subset: wikitext-2-raw-v1
   split: train
-  n_sequences: 2000
+  n_sequences: 2000          # x 256 tokens -> ~400k real tokens seen
   max_length: 256
   seed: 0
+  max_tokens: 16384          # kept per module: 112 mods (28 layers x q,k,v,o) x 16k tok -> ~18 GB fp32 cache per model
 
 align:
-  method: ridge          # ridge | procrustes | identity
-  ridge_lambda: 1.0
+  method: ridge              # ridge | procrustes | identity
+  ridge_lambda: 1.0          # swept in run_gpu_1p5b.sh (RIDGE_LAMS)
   per_layer: true
   center: true
 
-# Each task adapter is trained on M_v (Qwen2-1.5B) ahead of time; see
-# experiments/train_lora.py. eval_dataset measures held-out task quality.
 tasks:
   - name: gsm8k
-    adapter_path: runs/adapters_v/gsm8k
-    eval_dataset: gsm8k
+    adapter_path: runs/qwen2_to_qwen25_1.5b/adapters_v/gsm8k
+    eval_dataset: openai/gsm8k
+    eval_subset: main
     eval_split: test
-    metric: accuracy          # numeric exact-match via greedy decode
+    metric: accuracy
     text_field: question
-    max_eval_samples: 300
-  - name: samsum
-    adapter_path: runs/adapters_v/samsum
-    eval_dataset: samsum
+    prompt_template: "Question: {question}\nAnswer:"
+    answer_field: answer
+    max_new_tokens: 256
+    max_eval_samples: 500
+  - name: agnews
+    adapter_path: runs/qwen2_to_qwen25_1.5b/adapters_v/agnews
+    eval_dataset: fancyzhx/ag_news
     eval_split: test
-    metric: perplexity
+    metric: exact_match
+    text_field: text
+    prompt_template: "Classify the news topic as World, Sports, Business, or Sci/Tech.\nArticle: {text}\nTopic:"
+    answer_field: label
+    label_names: [World, Sports, Business, Sci/Tech]
+    max_new_tokens: 4
+    max_eval_samples: 1000
+  - name: samsum
+    adapter_path: runs/qwen2_to_qwen25_1.5b/adapters_v/samsum
+    eval_dataset: knkarthick/samsum
+    eval_split: test
+    metric: completion_perplexity
     text_field: dialogue
-    max_eval_samples: 300
+    prompt_template: "Dialogue:\n{dialogue}\nSummary:"
+    answer_field: summary
+    max_eval_samples: 500
 
 output_dir: runs/qwen2_to_qwen25_1.5b
-device: cuda          # cpu | mps for laptop iteration
+device: cuda
 dtype: bfloat16

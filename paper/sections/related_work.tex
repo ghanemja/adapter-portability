@@ -1,0 +1,119 @@
+% =====================================================================
+% Related Work
+% =====================================================================
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Weight-space composition assumes a shared basis.}
+Task arithmetic~\citep{ilharco2023taskvectors} treats a fine-tuning delta
+$\theta_{\mathrm{ft}}-\theta_{\mathrm{base}}$ as a vector that can be added,
+negated, or combined across tasks; TIES-Merging~\citep{yadav2023ties} and
+DARE~\citep{yu2024dare} refine the combination by trimming and rescaling the
+delta to reduce interference. All three operate on deltas taken \emph{from the
+same base checkpoint}: the arithmetic is meaningful only because every delta
+lives in one fixed parameter basis. A version bump replaces that basis. Our
+naive-transfer baseline is exactly task arithmetic across versions, i.e.\ adding
+$\Delta W$ to $M_{v+1}$ unchanged, and
+\citet{lin2025finetuningtransfer} show empirically that this ``diff-vector
+transfer'' from Llama~3.0-8B to Llama~3.1-8B retains some, but not all, of the
+fine-tuning benefit. We treat their operation as the published form of the naive
+baseline and ask how much of the remaining gap a data-free correction can
+close.
+
+\paragraph{Representational similarity and stitching motivate alignability.}
+A long line of work shows that independently trained networks learn
+representations that agree up to a simple transformation. Model
+stitching~\citep{lenc2015stitching,bansal2021stitching,csiszarik2021stitching}
+inserts a learned (often linear) layer between the early part of one network
+and the late part of another and finds that the composite performs well;
+CKA~\citep{kornblith2019cka} quantifies the residual disagreement in a
+basis-invariant way; Git Re-Basin~\citep{ainsworth2023gitrebasin} aligns
+permutation symmetries so that two solutions can be merged; relative
+representations~\citep{moschella2023relative} remove the nuisance
+transformation by re-expressing every point against a set of anchors; and the
+Platonic Representation Hypothesis~\citep{huh2024platonic} argues that larger
+models converge toward a shared representation of the data. These results
+justify the central modeling assumption of this paper, that two versions of the
+same family are related by a per-module map that is close to linear, and
+anchors are the mechanism they use to find it. None of them, however, moves a
+\emph{weight-level} object such as a LoRA adapter between models: stitching
+adds a layer at inference time, and re-basin merges full networks rather than
+re-expressing a low-rank update. Our transplant
+(Eq.~\ref{eq:transplant}) folds the stitching map into the adapter so that the
+ported model has the same architecture and inference cost as the original.
+
+\paragraph{Training-free and data-free adapter transfer.}
+Several recent methods port an adapter to a new base without task data; they
+differ in what they require of the adapter and in what signal they align on
+(Table~\ref{tab:related}).
+LoRA-X~\citep{farhadzadeh2025lorax} and Trans-PEFT~\citep{gu2025transpeft}
+both transfer without retraining but only for adapters trained under a special
+regime: LoRA-X constrains the adapter to the dominant singular subspace of the
+source base weights so that it can be re-projected, and Trans-PEFT trains
+adapters to depend on attention patterns rather than on FFN-stored knowledge.
+Neither applies to the pre-existing adapters an organization already has.
+Cross-LoRA~\citep{xia2025crosslora} is the closest method and the baseline we
+compare against. It takes an ordinary LoRA, computes rank-truncated SVDs of the
+source and target base weights $W_s\!\approx\!U_s\Sigma_sV_s^\top$ and
+$W_t\!\approx\!U_t\Sigma_tV_t^\top$, maps the source bases onto the target
+bases by least squares, and projects the update as
+$\Delta W_t=\tilde U_s(\tilde U_s^\top\Delta W_s\tilde V_s)\tilde V_s^\top$.
+The signal is purely \emph{weight-space}: no input ever passes through either
+model. When the two bases share dimensions, as in a version pair, the
+least-squares step is exact and the method reduces to projecting $\Delta W_s$
+onto the top-$k$ singular subspaces of the target weight
+(\S\ref{sec:method:crosslora}). Cross-LoRA is evaluated on cross-family and
+cross-size pairs (Qwen2.5-1.5B/3B, LLaMA-3.2-3B, Gemma-2-2B) on multiple-choice
+benchmarks where the trained-LoRA oracle itself improves over the base by under
+one point, so the reported ``approaches retrained LoRA'' leaves open how much of
+a large task gain survives transfer. Two methods that do retrain are
+complementary rather than competing: ReLoRA~\citep{xu2026relora} warm-starts a
+new adapter from the old one with Bayesian-optimized initialization and
+scheduled regularization, and PorTAL~\citep{ramp2026portal} trains a
+base-agnostic latent adapter up front and fits a per-base projection from a few
+hundred labeled examples. Both need task data at port time.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lccll@{}}
+\toprule
+Method & Training-free & Ordinary LoRA & Alignment signal & Pairs studied \\
+\midrule
+Fine-tuning Transfer~\citep{lin2025finetuningtransfer} & \checkmark & \checkmark & none (diff add) & Llama 3.0$\to$3.1 \\
+LoRA-X~\citep{farhadzadeh2025lorax} & \checkmark & $\times$ & weight SVD subspace & SD1.5 / SDXL \\
+Trans-PEFT~\citep{gu2025transpeft} & \checkmark & $\times$ & architectural prior & 7 bases, 12 tasks \\
+Cross-LoRA~\citep{xia2025crosslora} & \checkmark & \checkmark & weight SVD subspace & cross-family \\
+ReLoRA~\citep{xu2026relora} & $\times$ & \checkmark & adapter as init & version updates \\
+PorTAL~\citep{ramp2026portal} & $\times$ & $\times$ & learned, $\sim$500 labels & cross-size/family \\
+\midrule
+Ours & \checkmark & \checkmark & \textbf{activations} on unlabeled anchors & same-family versions \\
+\bottomrule
+\end{tabular}
+\caption{Adapter transfer across base models. ``Ordinary LoRA'' means the method
+accepts an adapter trained with the standard recipe, without a transfer-aware
+training constraint. Only Cross-LoRA and ours are both training-free and
+applicable to existing adapters; they differ in whether the alignment is read
+from the weights or from what the modules compute on real inputs.}
+\label{tab:related}
+\end{table}
+
+\paragraph{Where this paper sits.}
+Two distinctions organize the table. The first is \emph{version versus family}:
+the training-free methods above are motivated by heterogeneous pairs (different
+sizes or families), and none of them studies the same-family version bump that
+is the routine operational event for adapter libraries. The second is
+\emph{weight versus activation}: existing training-free alignment reads the
+relation between two models off their weight matrices, whereas we read it off
+their activations on a small unlabeled anchor set. The two can disagree. A
+version update that changes how a module responds to real inputs without
+rotating the dominant singular directions of its weight matrix is invisible to a
+weight-SVD method but is exactly what an activation regression captures; and an
+update that is a non-orthogonal reshaping of the activation space cannot be
+expressed by projection onto an orthonormal subspace at all. Our drift study
+(\S\ref{sec:drift}) measures the former on real checkpoints and our ablations
+(\S\ref{sec:ablations}) isolate the latter, which is why the method is
+unconstrained ridge regression rather than an orthogonal map. Knowledge
+distillation~\citep{hinton2015distillation} could also port behaviour to a new
+base, but it needs inference on task-like inputs and gradient steps on the
+target; it is a retraining method under our definition.

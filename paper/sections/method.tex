@@ -1,0 +1,159 @@
+% =====================================================================
+% Method: Linear Representational Alignment
+% =====================================================================
+\section{Method: Linear Representational Alignment}
+\label{sec:method}
+
+The transplant of Eq.~\eqref{eq:transplant} needs, for every adapted module
+$\ell$, two matrices $P^{\mathrm{in}}_\ell$ and $P^{\mathrm{out}}_\ell$ that
+translate between the activation geometries of $M_v$ and $M_{v+1}$. This section
+specifies how we estimate them from anchors alone, why we estimate them in
+activation space rather than weight space, and the variants we ablate.
+
+\subsection{Anchor activations}
+\label{sec:method:anchors}
+
+We draw $\mathcal{D}_{\mathrm{anchor}}$ from a generic corpus that is unrelated
+to any downstream task (in our experiments, WikiText-2 training text), tokenize
+it once with the shared tokenizer, and run the same token ids through both base
+checkpoints with forward hooks on every module in $\mathcal{L}$. For module
+$\ell$ this yields token-aligned matrices
+\[
+  H^{\mathrm{in},v}_\ell,\;H^{\mathrm{in},v+1}_\ell\in\mathbb{R}^{N\times d^{\mathrm{in}}_\ell},
+  \qquad
+  H^{\mathrm{out},v}_\ell,\;H^{\mathrm{out},v+1}_\ell\in\mathbb{R}^{N\times d^{\mathrm{out}}_\ell},
+\]
+where row $i$ of each matrix is the activation of the same token position in
+the same sequence. Pad positions are dropped and, to bound memory, the kept
+positions are subsampled with a fixed seed so both models keep identical rows.
+Because the inputs are identical, the $i$-th rows are two views of one
+underlying token in two coordinate systems, which is what makes a regression
+between them meaningful. This is the only pass through the models the method
+requires; the activations are cached and reused by every variant below.
+
+\subsection{Closed-form maps}
+\label{sec:method:maps}
+
+Each map is a least-squares regression from one version's activations to the
+other's. Writing $S$ for the source matrix and $T$ for the target (both
+mean-centered over rows), we solve for $P$ with $S P^\top\approx T$:
+\begin{align}
+  \text{ridge:}\quad
+    &P=\arg\min_P\;\lVert T-SP^\top\rVert_F^2+\lambda\lVert P\rVert_F^2
+     \;=\;(T^\top S)(S^\top S+\lambda I)^{-1},
+  \label{eq:ridge}\\
+  \text{orthogonal (Procrustes):}\quad
+    &P=\arg\min_{P^\top P=I}\;\lVert T-SP^\top\rVert_F^2
+     \;=\;(UV^\top)^\top,\quad S^\top T=U\Sigma V^\top .
+  \label{eq:procrustes_sol}
+\end{align}
+The input map takes $S=H^{\mathrm{in},v+1}_\ell$, $T=H^{\mathrm{in},v}_\ell$
+(it pulls a new-version input back into the old basis the adapter was trained
+to read), and the output map takes $S=H^{\mathrm{out},v}_\ell$,
+$T=H^{\mathrm{out},v+1}_\ell$ (it pushes the adapter's old-basis output forward
+into the new basis). Both are $d\times d$ solves per module, dominated by one
+$d^3$ inverse or SVD; for $d\le 4096$ the complete set of maps for a model is
+fit in seconds on a CPU. Ridge is the default. The orthogonal variant encodes
+the prior that version drift is a rotation; \S\ref{sec:ablations} shows that
+prior is wrong often enough to cost accuracy, which is a central empirical
+point of the paper.
+
+\subsection{Transplant and loading}
+\label{sec:method:transplant}
+
+With the maps in hand the adapter is rewritten factor by factor,
+\[
+  A'_\ell = A_\ell P^{\mathrm{in}}_\ell,\qquad
+  B'_\ell = P^{\mathrm{out}}_\ell B_\ell,
+\]
+so that $\tfrac{\alpha}{r}B'_\ell A'_\ell=P^{\mathrm{out}}_\ell\Delta W_\ell
+P^{\mathrm{in}}_\ell$. The rank, scale $\alpha$, dropout, and target-module
+list are unchanged, so the result is a valid adapter in the original
+serialization format and loads onto $M_{v+1}$ with standard PEFT tooling. No
+new parameters are introduced and inference cost is identical to the original
+adapter. Modules that were not adapted need no map.
+
+\begin{algorithm}[t]
+\caption{Activation-aligned adapter transplant}
+\label{alg:transplant}
+\begin{algorithmic}[1]
+\Require bases $M_v$, $M_{v+1}$; adapter $\{(A_\ell,B_\ell)\}_{\ell\in\mathcal{L}}$;
+         unlabeled anchors $\mathcal{D}_{\mathrm{anchor}}$; solver $\in\{$ridge($\lambda$), orthogonal$\}$
+\State tokenize $\mathcal{D}_{\mathrm{anchor}}$ once; run the ids through $M_v$ and $M_{v+1}$ with hooks on $\mathcal{L}$
+\State cache token-aligned $H^{\mathrm{in},\cdot}_\ell$, $H^{\mathrm{out},\cdot}_\ell$ for every $\ell\in\mathcal{L}$
+\For{$\ell\in\mathcal{L}$}
+  \State $P^{\mathrm{in}}_\ell\gets\textsc{Fit}(S{=}H^{\mathrm{in},v+1}_\ell,\;T{=}H^{\mathrm{in},v}_\ell)$ \Comment{Eq.~\eqref{eq:ridge} or \eqref{eq:procrustes_sol}}
+  \State $P^{\mathrm{out}}_\ell\gets\textsc{Fit}(S{=}H^{\mathrm{out},v}_\ell,\;T{=}H^{\mathrm{out},v+1}_\ell)$
+  \State $A'_\ell\gets A_\ell P^{\mathrm{in}}_\ell$;\quad $B'_\ell\gets P^{\mathrm{out}}_\ell B_\ell$
+\EndFor
+\State \Return adapter $\{(A'_\ell,B'_\ell)\}$ loaded onto $M_{v+1}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Why activations rather than weights}
+\label{sec:method:why}
+
+The alternative, used by LoRA-X and Cross-LoRA, is to relate the two versions
+through their weight matrices. Three properties of version drift argue for
+the activation route.
+First, the adapter acts on activations: $A_\ell$ reads coordinates of
+$x\in\mathbb{R}^{d^{\mathrm{in}}}$ and $B_\ell$ writes coordinates of the module
+output. The quantity that must be preserved across versions is the function
+$x\mapsto\Delta W_\ell x$ \emph{on the inputs the module actually receives},
+and the empirical distribution of those inputs is available only by running
+the model. A regression on anchor activations minimizes exactly the error in
+that function; a weight-subspace projection minimizes a surrogate.
+Second, a module's dominant singular directions are a property of its weight
+alone, whereas the drift we need to undo is a joint property of the whole
+network upstream of the module. Two versions can share nearly identical
+dominant subspaces for $W_\ell$ while feeding $W_\ell$ a differently oriented
+input distribution; weight-space methods are blind to this, activation methods
+see it directly (\S\ref{sec:drift} quantifies how much of the drift is of this
+kind).
+Third, drift need not be orthogonal, nor confined to a low-rank subspace.
+Ridge regression returns a general linear map; an orthogonal map or a
+subspace projection cannot represent anisotropic rescaling, and we show in
+\S\ref{sec:ablations} that this restriction alone forfeits a measurable
+fraction of the recoverable gap.
+
+\subsection{The Cross-LoRA baseline in the equal-dimension case}
+\label{sec:method:crosslora}
+
+Cross-LoRA~\citep{xia2025crosslora} computes rank-$k$ truncated SVDs
+$W_s\approx U_s\Sigma_sV_s^\top$ and $W_t\approx U_t\Sigma_tV_t^\top$ of the
+source and target base weights of each module, fits
+$\hat P_U=\arg\min_P\lVert PU_s-U_t\rVert_F$ and
+$\hat P_V=\arg\min_P\lVert PV_s-V_t\rVert_F$, sets $\tilde U_s=\hat P_UU_s$,
+$\tilde V_s=\hat P_VV_s$, and transfers
+$\Delta W_t=\tilde U_s(\tilde U_s^\top\Delta W_s\tilde V_s)\tilde V_s^\top$.
+When $W_s$ and $W_t$ have the same shape, which is the case for every version
+pair we study, $U_s$ has orthonormal columns and the minimum-norm least-squares
+solution is $\hat P_U=U_tU_s^\top$, so $\tilde U_s=U_t$ exactly and likewise
+$\tilde V_s=V_t$. The transfer therefore reduces to
+\begin{equation}
+  \Delta W_t \;=\; (U_tU_t^\top)\,\Delta W_s\,(V_tV_t^\top),
+  \label{eq:crosslora_equal}
+\end{equation}
+the projection of the source update onto the top-$k$ left and right singular
+subspaces of the \emph{target} weight. As $k\to\min(d^{\mathrm{in}},d^{\mathrm{out}})$
+this approaches naive transfer. We implement the method literally (truncated
+SVD, least-squares alignment, projection) and verify numerically that it
+matches Eq.~\eqref{eq:crosslora_equal}; like ours it preserves rank
+($B'=U_tU_t^\top B$, $A'=AV_tV_t^\top$) and adds no inference cost, so the
+comparison isolates the alignment signal, weights versus activations, with
+everything else held fixed. We use the paper's truncation rank $k=320$ and
+sweep it in \S\ref{sec:ablations}.
+
+\subsection{Variants}
+\label{sec:method:variants}
+
+We ablate four design choices. \textbf{Solver}: ridge with $\lambda$ swept
+over four orders of magnitude, versus the orthogonal solution.
+\textbf{Scope}: one pair of maps per module (default) versus a single pair
+shared by all modules of equal shape, which tests whether drift is a global
+rotation of the residual stream or module-specific. \textbf{Anchor budget}:
+the number of anchor tokens $N$ used to fit the maps, from $10^2$ to $10^4$.
+\textbf{Module subset}: aligning only the attention projections with the
+largest measured drift versus all adapted modules. A nonlinear (small MLP)
+map is a natural extension that would break rank preservation and is left to
+future work.

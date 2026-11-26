@@ -30,6 +30,34 @@ from transformers import (
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
+def latest_complete_checkpoint(out: Path) -> str | None:
+    """Return the newest checkpoint-N dir that finished saving (has
+    trainer_state.json + adapter weights). Partial dirs left by a kill
+    mid-save are removed so the Trainer never tries to load them."""
+    import shutil
+
+    if not out.exists():
+        return None
+    complete = []
+    for d in out.glob("checkpoint-*"):
+        if not d.is_dir():
+            continue
+        ok = (d / "trainer_state.json").exists() and (
+            (d / "adapter_model.safetensors").exists() or (d / "adapter_model.bin").exists()
+        )
+        if ok:
+            try:
+                complete.append((int(d.name.split("-")[-1]), d))
+            except ValueError:
+                pass
+        else:
+            print(f"[train] removing incomplete checkpoint {d}")
+            shutil.rmtree(d, ignore_errors=True)
+    if not complete:
+        return None
+    return str(max(complete)[1])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", required=True)
@@ -37,6 +65,11 @@ def main():
     ap.add_argument("--subset", default=None)
     ap.add_argument("--split", default="train")
     ap.add_argument("--text-field", default="text")
+    ap.add_argument("--template", default=None,
+                    help="python format string over row fields used as the training text, "
+                         "e.g. '{question}\\nAnswer: {answer}'. Overrides --text-field.")
+    ap.add_argument("--label-names", nargs="*", default=None,
+                    help="map an int 'label' field to words before templating (classification)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--rank", type=int, default=16)
     ap.add_argument("--alpha", type=int, default=32)
@@ -49,10 +82,22 @@ def main():
                     help="hard cap on optimizer steps (-1 = use epochs)")
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--device", default=None, help="force 'cpu' to disable bf16")
+    ap.add_argument("--save-steps", type=int, default=25,
+                    help="checkpoint every N optimizer steps (resume survives teardown)")
+    ap.add_argument("--force", action="store_true",
+                    help="retrain even if a finished adapter already exists in --out")
     ap.add_argument("--targets", nargs="+",
                     default=["q_proj", "k_proj", "v_proj", "o_proj"])
     args = ap.parse_args()
     use_bf16 = args.device != "cpu"
+
+    out = Path(args.out)
+    if (out / "adapter_model.safetensors").exists() and not args.force:
+        print(f"[train] finished adapter already at {out}; skip (use --force to retrain)")
+        return
+    resume = latest_complete_checkpoint(out)
+    if resume:
+        print(f"[train] resuming from {resume}")
 
     tok = AutoTokenizer.from_pretrained(args.base)
     if tok.pad_token is None:
@@ -68,6 +113,16 @@ def main():
     model.print_trainable_parameters()
 
     ds = load_dataset(args.dataset, args.subset, split=args.split)
+    if args.template:
+        tmpl = args.template.replace("\\n", "\n")
+        names = args.label_names
+
+        def render(r):
+            if names and isinstance(r.get("label"), int):
+                r = {**r, "label": names[r["label"]]}
+            return {args.text_field: tmpl.format(**r) + (tok.eos_token or "")}
+
+        ds = ds.map(render)
     ds = ds.filter(lambda r: len(str(r.get(args.text_field, "")).strip()) > 0)
     if args.max_train_samples:
         ds = ds.select(range(min(args.max_train_samples, len(ds))))
@@ -85,12 +140,12 @@ def main():
             per_device_train_batch_size=args.batch_size, gradient_accumulation_steps=2,
             learning_rate=args.lr, bf16=use_bf16, logging_steps=10,
             # checkpoint so a session teardown mid-train can resume, not restart.
-            save_strategy="steps", save_steps=25, save_total_limit=1, report_to=[]),
+            save_strategy="steps", save_steps=args.save_steps, save_total_limit=2,
+            report_to=[]),
         train_dataset=ds,
         data_collator=DataCollatorForLanguageModeling(tok, mlm=False),
     )
-    resume = any(Path(args.out).glob("checkpoint-*")) if Path(args.out).exists() else False
-    trainer.train(resume_from_checkpoint=resume)
+    trainer.train(resume_from_checkpoint=resume or None)
 
     model.save_pretrained(args.out)
     tok.save_pretrained(args.out)

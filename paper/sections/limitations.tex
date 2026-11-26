@@ -1,0 +1,64 @@
+% =====================================================================
+% Limitations
+% =====================================================================
+\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{Scope of the transfer.}
+The method assumes that the adapted modules have the same input and output
+dimensions in $M_v$ and $M_{v+1}$ and that the two checkpoints share a
+tokenizer, or at least tokenize the anchor text identically
+(\S\ref{sec:assumptions}; we check the latter mechanically before every run).
+Both hold for the version pairs we study and for most minor releases within a
+family, but they exclude cross-size transfer (e.g.\ 1.5B\,$\to$\,3B), cross-family
+transfer, and releases that change the vocabulary. Ridge regression itself
+accepts rectangular maps, so a dimension change is not a mathematical obstacle,
+but we have not evaluated it and make no claim there. Cross-LoRA handles the
+dimension-mismatch case by construction and remains the method of choice for
+heterogeneous pairs; our claim is confined to version drift.
+
+\paragraph{Linear and per-module.}
+The transplant is linear so that it folds into the LoRA factors without
+changing rank or inference cost. Drift that is nonlinear, or that redistributes
+a function across modules (a head that moves to a different layer), cannot be
+captured by any per-module linear map, aligned or not. The controlled
+experiments in \S\ref{sec:ablations} plant linear drift and so measure the
+best case for the method; the real-pair results are the honest measurement of
+how much of actual drift is linear enough to be recovered.
+
+\paragraph{Breadth of evidence.}
+%TODO(GPU): revise once the 1.5B (and, if obtained, Gemma 3->4) results exist.
+The real-model results come from one family and a small number of version
+pairs and tasks. The drift study at 0.5B uses anchor sets of a few thousand
+tokens on a CPU; the 1.5B experiments use larger anchor sets but still a
+single generic corpus. We have not tested whether the anchor domain matters
+(code versus prose, or in-domain versus out-of-domain anchors), whether the
+conclusions hold for adapters on the MLP projections, or for other PEFT
+families (DoRA, IA$^3$, prefix tuning). Larger version jumps than the ones
+studied here, for instance a release that changes the attention layout or adds
+layers, break the module correspondence the method relies on.
+
+\paragraph{Evaluation.}
+Perplexity on held-out task text is a weak proxy for the utility of an adapter,
+and on tasks where fine-tuning moves perplexity only slightly the oracle-naive
+gap is small, making the gap-recovered metric noisy. We therefore emphasize
+tasks with a large oracle lift and an exact-match metric (GSM8K), but
+exact-match on greedy decodes with a fixed prompt format is itself sensitive to
+formatting changes between versions, which could favour or penalize any
+transferred adapter for reasons unrelated to the alignment. Human or
+LLM-judged generative quality is not evaluated.
+
+\paragraph{Oracle definition.}
+The oracle is a LoRA of the same rank trained on $M_{v+1}$ with the same
+recipe and step budget as the source adapter. A better-tuned oracle would
+widen the gap and lower every method's recovered fraction; a worse one would
+do the opposite. The oracle is a reference point for a fixed training budget,
+not a ceiling on what task data can buy.
+
+\paragraph{Cost of anchors.}
+Although anchors are unlabeled and generic, the method still needs one forward
+pass of the anchor set through both base models with hooks on every adapted
+module, and it stores activations of size $N\times d$ per module. For a 12B
+model with hundreds of adapted modules this is tens of gigabytes of cached
+activations at $N=10^4$; streaming the covariance statistics instead of the
+raw activations removes the storage cost but we have not implemented it.
