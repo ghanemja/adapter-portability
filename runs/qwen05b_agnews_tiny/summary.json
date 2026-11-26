@@ -1,0 +1,17 @@
+[
+  {
+    "task": "agnews",
+    "metric": "perplexity",
+    "naive": 36.16913283842404,
+    "crosslora": 36.16250927635344,
+    "procrustes": 35.73654112194341,
+    "ridge": 35.64322617233866,
+    "oracle": 31.685065803921102,
+    "gap_recovered_pct": {
+      "crosslora": 0.14771327055629582,
+      "procrustes": 9.647307079756512,
+      "ridge": 11.728340857501928
+    },
+    "gap_recovered_ridge": 11.728340857501928
+  }
+]

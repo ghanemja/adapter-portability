@@ -1,0 +1,59 @@
+[
+  {
+    "task": "gsm8k",
+    "metric": "accuracy",
+    "naive": 0.0,
+    "crosslora": 0.0,
+    "procrustes": 0.0,
+    "ridge": 0.0,
+    "oracle": 0.0,
+    "ridge_lam0.1": 0.0,
+    "crosslora_r64": 0.0,
+    "gap_recovered_pct": {
+      "crosslora": NaN,
+      "procrustes": NaN,
+      "ridge": NaN,
+      "ridge_lam0.1": NaN,
+      "crosslora_r64": NaN
+    },
+    "gap_recovered_ridge": NaN
+  },
+  {
+    "task": "agnews",
+    "metric": "exact_match",
+    "naive": 0.25,
+    "crosslora": 0.25,
+    "procrustes": 0.25,
+    "ridge": 0.25,
+    "oracle": 0.25,
+    "ridge_lam0.1": 0.25,
+    "crosslora_r64": 0.25,
+    "gap_recovered_pct": {
+      "crosslora": NaN,
+      "procrustes": NaN,
+      "ridge": NaN,
+      "ridge_lam0.1": NaN,
+      "crosslora_r64": NaN
+    },
+    "gap_recovered_ridge": NaN
+  },
+  {
+    "task": "samsum",
+    "metric": "completion_perplexity",
+    "naive": 5.400925286289948,
+    "crosslora": 5.4013019932097865,
+    "procrustes": 5.402018465282029,
+    "ridge": 5.4008492351332436,
+    "oracle": 5.311180856866775,
+    "ridge_lam0.1": 5.3902240688919285,
+    "crosslora_r64": 5.402906165549402,
+    "gap_recovered_pct": {
+      "crosslora": -0.41975521183837,
+      "procrustes": -1.2181023369439927,
+      "ridge": 0.08474192458900168,
+      "ridge_lam0.1": 11.92410210505665,
+      "crosslora_r64": -2.207244808603954
+    },
+    "gap_recovered_ridge": 0.08474192458900168
+  }
+]

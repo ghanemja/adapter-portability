@@ -1,0 +1,266 @@
+[
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.773763505977622
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.408694296982329
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.404610716055548
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 100,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.403390454314097
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.0,
+      "samsum": 20.90317124118158
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.400876244713183
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.403965594765373
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 500,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.393144368440211
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.0,
+      "samsum": 20.90317124118158
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.400876244713183
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.403965594765373
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 4000,
+    "map_scope": "per_layer",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.393144368440211
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.3977894455022835
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.397727162998673
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.396196574868514
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 100,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.380795844996329
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.398164929195948
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.39816555701199
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.398214236520701
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 500,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.392752260703527
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 0.001,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.398164929195948
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 1.0,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.39816555701199
+    }
+  },
+  {
+    "method": "ridge",
+    "lam": 100.0,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.398214236520701
+    }
+  },
+  {
+    "method": "procrustes",
+    "lam": 0.0,
+    "anchor_tokens": 4000,
+    "map_scope": "shared",
+    "score": {
+      "gsm8k": 0.0,
+      "agnews": 0.25,
+      "samsum": 5.392752260703527
+    }
+  }
+]

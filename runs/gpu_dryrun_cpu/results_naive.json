@@ -1,0 +1,14 @@
+{
+  "gsm8k": {
+    "metric": "accuracy",
+    "value": 0.0
+  },
+  "agnews": {
+    "metric": "exact_match",
+    "value": 0.25
+  },
+  "samsum": {
+    "metric": "completion_perplexity",
+    "value": 5.400925286289948
+  }
+}

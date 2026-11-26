@@ -1,3 +1,5 @@
+> **Status note:** this README predates the novelty re-check and overclaims ("first training-free cross-version transfer" is not true: see Cross-LoRA, LoRA-X). `HANDOFF.md` is the source of truth. The GPU job is `experiments/run_gpu_1p5b.sh`; see `docs/GPU_RUN.md`.
+
 # Cross-Version Adapter Portability via Representational Alignment
 
 Treat a LoRA fine-tuning delta as a **portable object**: transplant an adapter

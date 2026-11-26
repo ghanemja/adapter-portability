@@ -1,0 +1,7 @@
+{
+  "agnews": {
+    "metric": "perplexity",
+    "value": 35.73654112194341,
+    "lambda": 1.0
+  }
+}

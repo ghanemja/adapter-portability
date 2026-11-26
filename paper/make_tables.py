@@ -108,7 +108,7 @@ def mean(xs):
     return sum(xs) / len(xs) if xs else NAN
 
 
-def main_table(tasks, data, gaps) -> str:
+def main_table(tasks, data, gaps, pair_txt: str) -> str:
     cols = [c for c in CORE if data.get(c[0])]
     head = " & ".join(["Task", "Metric"] + [c[2] for c in cols])
     lines = [
@@ -137,7 +137,7 @@ def main_table(tasks, data, gaps) -> str:
         lines.append(" & ".join([r"\emph{mean}", ""] + cells) + r" \\")
     lines += [
         r"\bottomrule", r"\end{tabular}",
-        r"\caption{Transferring LoRA adapters from Qwen2-1.5B to Qwen2.5-1.5B with no task "
+        rf"\caption{{Transferring LoRA adapters from {pair_txt} with no task "
         r"data. Naive loads the source adapter unchanged; Cross-LoRA projects it onto the "
         r"target weights' top-$k$ singular subspaces ($k=320$); Procrustes and ridge use "
         r"per-module maps fit on unlabeled anchor activations; Oracle is a LoRA retrained on "
@@ -148,7 +148,7 @@ def main_table(tasks, data, gaps) -> str:
     return "\n".join(lines) + "\n"
 
 
-def sweep_table(tasks, run: Path, data, oracle_present: bool) -> str | None:
+def sweep_table(tasks, run: Path, data, oracle_present: bool, pair_txt: str) -> str | None:
     ridge = sorted(run.glob("results_aligned_ridge_lam*.json"))
     cross = sorted(run.glob("results_crosslora_r*.json"))
     if not (ridge or cross) or not oracle_present:
@@ -188,7 +188,7 @@ def sweep_table(tasks, run: Path, data, oracle_present: bool) -> str | None:
     lines += [
         r"\bottomrule", r"\end{tabular}",
         r"\caption{Sensitivity of gap recovered (\%) to the ridge penalty $\lambda$ and to "
-        r"Cross-LoRA's truncation rank $k$ on Qwen2-1.5B$\to$Qwen2.5-1.5B. Each method is "
+        rf"Cross-LoRA's truncation rank $k$ on {pair_txt}. Each method is "
         r"also reported at its best setting so the comparison does not hinge on defaults.}",
         r"\label{tab:sweeps}", r"\end{table}",
     ]
@@ -229,12 +229,14 @@ def main():
     if not data["naive"]:
         sys.exit(f"[tables] no results_naive.json in {run}; nothing to tabulate")
     gaps = gaps_for(cfg.tasks, data)
+    short = lambda m: m.split("/")[-1]                      # noqa: E731
+    pair_txt = rf"{short(cfg.pair.base_v)}$\to${short(cfg.pair.base_v_next)}"
 
-    (out / "main_results.tex").write_text(main_table(cfg.tasks, data, gaps))
+    (out / "main_results.tex").write_text(main_table(cfg.tasks, data, gaps, pair_txt))
     (out / "results_macros.tex").write_text(macros(cfg.tasks, data, gaps))
     print(f"[tables] {out / 'main_results.tex'}")
     print(f"[tables] {out / 'results_macros.tex'}")
-    sw = sweep_table(cfg.tasks, run, data, bool(data["oracle"]))
+    sw = sweep_table(cfg.tasks, run, data, bool(data["oracle"]), pair_txt)
     if sw:
         (out / "sweeps.tex").write_text(sw)
         print(f"[tables] {out / 'sweeps.tex'}")
@@ -247,8 +249,11 @@ def main():
     wins = sum(1 for v in per_task.values()
                if not math.isnan(v["ridge"]) and not math.isnan(v["crosslora"])
                and v["ridge"] > v["crosslora"])
-    if math.isnan(margin):
-        verdict = "INCOMPLETE: need naive, oracle, ridge and crosslora results"
+    missing = [t for t, v in per_task.items()
+               if math.isnan(v["ridge"]) or math.isnan(v["crosslora"])]
+    if math.isnan(margin) or missing:
+        verdict = ("INCOMPLETE: no usable gap for " + ", ".join(missing or ["any task"])
+                   + " (missing results, or oracle == naive so the gap is undefined)")
     elif margin >= KILL_MARGIN_PTS and wins == len(cfg.tasks):
         verdict = f"CONTINUE: ridge beats Cross-LoRA on every task, mean margin {margin:.1f} pts"
     elif margin >= KILL_MARGIN_PTS:

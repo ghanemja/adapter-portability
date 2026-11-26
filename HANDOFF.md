@@ -1,6 +1,6 @@
 # HANDOFF — Cross-Version Adapter Portability via Representational Alignment
 
-Last updated: 2026-10-25. Repo: `/Users/janelle/Documents/finetune`. Git on `main`, remote: private https://github.com/ghanemja/adapter-portability (pushed 2026-10-25). `.gitignore` excludes `.venv/`, model weights and `runs/**` except small `*.json`/`*.log` result files.
+Last updated: 2026-11-26 (Cross-LoRA baseline, GPU job and paper sections; see §2.5, §6, §7). Repo: `/Users/janelle/Documents/finetune`. Git on `main`, remote: private https://github.com/ghanemja/adapter-portability (pushed 2026-10-25). `.gitignore` excludes `.venv/`, model weights and `runs/**` except small `*.json`/`*.log` result files.
 Author: Janelle Ghanem. This file is the single source of truth for project state. Read it before touching anything.
 
 ---
@@ -12,7 +12,8 @@ Author: Janelle Ghanem. This file is the single source of truth for project stat
 - **Novelty re-checked 2026-10-06.** Original framing ("first training-free cross-version LoRA transfer") is dead: Cross-LoRA (Aug 2025) and LoRA-X (ICLR 2025) exist. Surviving contribution is narrower but real: activation-based (functional) alignment for same-family **version drift**, vs Cross-LoRA's weight-only SVD on cross-family pairs. Details in §4.
 - **Deadlines:** ICLR 2027 and AAAI 2027 passed. Target TMLR (rolling) or ICML 2027 (late Jan 2027) or COLM 2027.
 - **Blocker:** local machine is CPU-only, 8.5 GB RAM. Everything compelling needs one GPU day.
-- **Next step:** rent a GPU, implement Cross-LoRA baseline, run Qwen2-1.5B → Qwen2.5-1.5B pipeline with ≥200 training steps on 3 tasks, write related work + method sections. See §7.
+- **Done:** Cross-LoRA baseline (5th condition), checkpoint-resume, paper §§1–5, 7 (synthetic), 8, 9 plus §6 setup; `paper/make_tables.py` turns results into LaTeX + a kill-condition verdict. GPU job is one command, dry-run verified on CPU. Pushed to `claude/wizardly-mendel-uupsel`.
+- **Next step:** rent an A100 40GB (≥48 GB host RAM) and run `bash experiments/run_gpu_1p5b.sh`. Everything in `docs/GPU_RUN.md`. ≈2 h / ≈$4 for the decision table.
 
 ---
 
@@ -64,6 +65,19 @@ Qwen2-0.5B → Qwen2.5-0.5B, AG News LM task, 20 steps, seqlen 32. Output: `runs
 
 Gap recovered (ridge) = 11.1%. Ordering correct (oracle < aligned < naive). **Proof of plumbing, not a result.** Adapter was badly undertrained so there was little signal to transplant and ridge ≈ Procrustes. Need ≥200 steps and a larger model for a meaningful gap.
 
+### 2.5 Five-condition tiny run with Cross-LoRA (CPU, re-run 2026-11-26)
+Config `configs/qwen05b_agnews_tiny5.yaml`, ROOT `runs/qwen05b_agnews_tiny`, 20 steps, seqlen 32, 40 eval docs. Log `runs/tiny5_cpu.log`.
+
+| condition | perplexity | gap recovered |
+|---|---|---|
+| naive | 36.17 | — |
+| Cross-LoRA (k=320, weight-only) | 36.16 | 0.1% |
+| procrustes | 35.74 | 9.6% |
+| ridge (λ=1) | 35.64 | 11.7% |
+| oracle | 31.69 | — |
+
+Plumbing verification only (20-step adapter). Ordering Cross-LoRA ≈ naive < Procrustes < ridge matches the prediction and reproduced across two independent runs (first run, lost with the container: 0.9 / 7.8 / 11.1%).
+
 ### 2.4 Attempted 150-step run (CPU, 2026-07-06) — DIED
 `runs/s150_cpu.log`, config `configs/qwen05b_agnews_s150.yaml`. Reached step 27/150 at 1–3 min/step, then session teardown killed it. `runs/qwen05b_agnews_s150/` contains only `adapters_v/`. Do not try again on CPU.
 
@@ -75,14 +89,18 @@ Gap recovered (ridge) = 11.1%. Ordering correct (oracle < aligned < naive). **Pr
 README.md                      project overview (from June; predates novelty re-check — do not trust its claims)
 requirements.txt               torch, transformers, peft, datasets, etc.
 .venv/                         python 3.11, CPU torch. Activate: source .venv/bin/activate
-src/adaptport/                 library: activation caching, CKA, ridge/Procrustes solvers, adapter transplant, eval
+src/adaptport/                 library: activation caching, CKA, ridge/Procrustes solvers, adapter transplant, eval, crosslora.py (baseline)
+                               eval.py metrics: perplexity | completion_perplexity | accuracy (GSM8K EM) | exact_match; batched generation
+docs/GPU_RUN.md                what you need (GPU box, no keys), the one command, cost (~$4 / ~$8), how to read the verdict
 experiments/
-  train_lora.py                stage 1: train LoRA on M_v (and oracle on M_{v+1})
+  train_lora.py                stage 1: train LoRA. Resumes from last COMPLETE checkpoint, removes partial ones, skips finished adapters; --template/--label-names; --save-steps; --force
   run_cka_drift.py             stage 2: per-module CKA drift between versions on anchor set
   run_naive_transfer.py        stage 3: apply ΔW unchanged to M_{v+1}
-  run_linear_alignment.py      stage 4: fit P_in/P_out per module (ridge | procrustes), transplant
+  run_linear_alignment.py      stage 4: fit P_in/P_out per module (ridge | procrustes), transplant. --lam/--tag for sweeps
+  run_crosslora_transfer.py    BASELINE: Cross-LoRA weight-only SVD transfer (--rank k, default 320 as in their paper; --tag for sweeps)
+  run_gpu_1p5b.sh              THE GPU JOB: 9 skip-if-done stages, resumable, writes paper tables + verdict. DEVICE=cpu dry run passes (runs/gpu_dryrun_cpu.log)
   run_oracle.py                train oracle adapter directly on M_{v+1}
-  evaluate.py                  perplexity; GSM8K numeric exact-match; direction-aware gap_recovered
+  evaluate.py                  summary.json: naive | crosslora | procrustes | ridge | oracle (+ sweep files), gap_recovered per method
   run_full_cpu.sh              end-to-end runner. Env-parametric: STEPS MAXLEN THREADS CFG ROOT
   run_ablations.py             --synthetic: planted-drift ablation sweep (anchor size, λ, per-layer vs shared)
   validate_mechanism.py        synthetic proof of ΔW' = P_out ΔW P_in
@@ -94,7 +112,8 @@ configs/
   qwen05b_agnews_s150.yaml     150-step attempt (died)
   qwen05b_agnews_cpu.yaml      0.5B pair, AG News, CPU defaults
   qwen05b_cpu.yaml             0.5B drift-only
-  qwen2_to_qwen25_1.5b.yaml    PRIMARY GPU pair config (not yet run)
+  qwen05b_agnews_tiny5.yaml    fresh-ROOT tiny config for the 5-condition table in §2.5
+  qwen2_to_qwen25_1.5b.yaml    PRIMARY GPU pair config (ready, not yet run): gsm8k EM, agnews label EM, samsum completion-ppl
   gemma3_to_gemma4_12b.yaml    HEADLINE GPU pair config (not yet run; weights not downloaded)
 runs/                          all outputs; see §2 for which files matter
 paper/
@@ -102,7 +121,11 @@ paper/
   main.tex                     skeleton, all \section headers present
   sections/introduction.tex    drafted (~3.5 KB) — contribution list claims "first", must be revised
   sections/problem_formulation.tex  drafted (~7 KB), still valid
-  references.bib               8 entries: lora, taskvectors, ties, dare, cka, stitching×2, platonic. MISSING all direct competitors (see §4).
+  sections/*.tex               all sections written except §6 results paragraphs (need GPU); see §6 table below
+  make_tables.py               results_*.json -> tables/{main_results,sweeps,results_macros}.tex + verdict.json (kill condition, 10-pt margin, pre-registered)
+  make_figures.py              figures/*.pdf; --run adds 1.5B drift + gap-recovered bars
+  references.bib               18 entries incl. all six competitors (authors verified on arXiv)
+  NOTE: no LaTeX toolchain available in the cloud container; braces/envs/cites/labels checked by script.
 ```
 
 Run the pipeline:
@@ -152,6 +175,10 @@ None of these are in `references.bib` yet. All six must be added and discussed.
 
 Realistic venue tier: TMLR, or ICML 2027 main if the gap-recovered margin over Cross-LoRA is large.
 
+**Kill condition, made operational (2026-11-26):** ridge must beat Cross-LoRA by ≥10 points of mean gap recovered across the three tasks. Fixed before any GPU result; `paper/make_tables.py` computes it into `paper/tables/verdict.json`. Do not move the threshold after seeing results.
+
+**Cross-LoRA implementation note.** Their Eqs. 3–6 align bases by least squares (not Procrustes). With equal dims the min-norm solution gives Ũ_s = U_t exactly, so ΔW_t = U_t U_tᵀ ΔW_s V_t V_tᵀ: projection onto the target weight's top-k subspaces. Verified numerically; written up in method.tex. Their truncation rank is 320 (Table 5); we sweep {64,160,320,640}.
+
 ---
 
 ## 5. Model pairs
@@ -170,28 +197,28 @@ Realistic venue tier: TMLR, or ICML 2027 main if the gap-recovered margin over C
 
 | § | Status | Action |
 |---|---|---|
-| 1 Introduction | drafted | **Revise**: remove "first" claims, add Cross-LoRA framing, new 5-bullet contribution list per §4 |
-| 2 Related Work | empty | **Write**: task arithmetic / TIES / DARE (shared-space assumption), model stitching + CKA + Platonic (motivate alignability), then the six papers in §4 with the weight-vs-activation and version-vs-family distinctions |
+| 1 Introduction | **revised** | insert headline numbers after GPU |
+| 2 Related Work | **written** | — |
 | 3 Problem Formulation | drafted | valid, minor: cite Fine-tuning Transfer as the naive baseline |
-| 4 Method | empty | write from §1 above; algorithm box; variants |
-| 5 Drift | empty, data exists | write around `drift.json` figure (drift vs depth, o_proj) |
-| 6 Experiments | empty, no data | blocked on GPU run |
-| 7 Ablations | empty, synthetic data exists | write synthetic sweep now; add real-pair sweep after GPU |
-| 8 Limitations | empty | scope (same family / dims / tokenizer), single family, generative eval caveats, Cross-LoRA handles dim mismatch and we don't |
-| 9 Reproducibility | empty | code release, anchor sets, fitted maps; Lincoln Lab public-release clearance note |
+| 4 Method | **written** | — |
+| 5 Drift | **written (0.5B)** | swap in 1.5B figure; drift-vs-degradation paragraph needs an unscripted per-module experiment |
+| 6 Experiments | **setup written; tables auto-generated** | results paragraphs after GPU (structure pre-committed in TODO comments) |
+| 7 Ablations | **synthetic half written** | §7.2 uncomment `\input{tables/sweeps}` after GPU |
+| 8 Limitations | **written** | — |
+| 9 Reproducibility | **written** | clearance note + code URL |
 
-Sections writable today with zero compute: 2, 4, 5, 7 (synthetic half), 8.
+Remaining zero-compute work: abstract numbers, README.md rewrite, per-module drift-vs-degradation script.
 
 ---
 
 ## 7. Next steps, in order
 
-1. **Implement Cross-LoRA baseline** in `src/adaptport/` and a `run_crosslora_transfer.py` stage. ~30 lines: rank-r truncated SVD of W_s and W_t per module, Ṽ_s alignment, ΔW_t = (ΔW_s·Ṽ_s)Ṽ_sᵀ. Add to `run_full_cpu.sh` and `summary.json` as a fourth condition. Verify it runs on the tiny CPU config.
-2. **Add Trainer checkpoint-resume** to `train_lora.py` so long runs survive interruption.
-3. **Rent GPU** (A100 40 GB class, ~$1.50/hr). Run `qwen2_to_qwen25_1.5b.yaml`: ≥200 steps, 3 tasks (AG News, GSM8K already supported in eval.py, pick one more with large LoRA lift). Conditions: naive, Cross-LoRA, Procrustes, ridge (λ sweep), oracle. Also re-run drift on 1.5B. One afternoon.
+1. ~~Cross-LoRA baseline~~ DONE (§2.5; also stage 5/8 of `run_full_cpu.sh`).
+2. ~~Checkpoint-resume~~ DONE.
+3. **Rent GPU and run** `bash experiments/run_gpu_1p5b.sh 2>&1 | tee runs/gpu_1p5b.log`. See `docs/GPU_RUN.md`. Bring back `runs/qwen2_to_qwen25_1.5b/*.json`, `paper/tables/`, `paper/figures/`.
 4. **Decide**: if ridge gap-recovered clearly > Cross-LoRA, continue. If not, stop.
 5. **Gemma 3-12B → 4-12B** headline run (request gated access first; 48 GB GPU or sequential loading).
-6. **Write** sections 2, 4, 5, 7, 8 (can start now, parallel to steps 1–3). Add six bib entries.
+6. ~~Write sections 2, 4, 5, 7, 8, 9; bib~~ DONE. Remaining: §6 results paragraphs and §7.2 after GPU.
 7. **Submit** TMLR, or ICML 2027 if margin is large.
 
 ---
@@ -199,7 +226,10 @@ Sections writable today with zero compute: 2, 4, 5, 7 (synthetic half), 8.
 ## 8. Known gotchas
 
 - Remote is private `ghanemja/adapter-portability`. Keep it private until README.md is fixed and Lincoln Lab release clearance is done.
-- `README.md` predates the novelty re-check and overclaims. Fix or delete before any release.
+- `README.md` predates the novelty re-check and overclaims. A banner now points to HANDOFF.md; rewrite before release.
+- **Cloud containers are ephemeral.** On 2026-10-25 two unpushed commits were lost when the container was reclaimed and had to be rebuilt on 2026-11-26. Push after every commit. Cloud containers also lack `.venv`: `python3 -m venv .venv && .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu && .venv/bin/pip install -r requirements.txt matplotlib`.
+- Dry runs must not use ROOT=runs/qwen2_to_qwen25_1.5b: only that ROOT writes into `paper/tables/` (guard added after a dry run leaked test tables there).
+- `run_ablations.py` real mode fits shared maps per (d_in, d_out) group (GQA shapes crashed the old global concat).
 - Local machine: CPU only, 8.5 GB RAM, torch defaults to 2 threads. 0.5B activation extraction ≈ minutes per 64 sequences. Training 1–3 min/step. Not viable beyond smoke tests.
 - Background jobs die on session teardown.
 - HF Hub unauthenticated warnings in logs are harmless but set `HF_TOKEN` for gated Gemma.

@@ -27,6 +27,10 @@ RANK=${RANK:-16}
 DEVICE=${DEVICE:-cuda}         # DEVICE=cpu for a dry run (disables bf16 in train_lora.py)
 RIDGE_LAMS=${RIDGE_LAMS:-"0.1 10 100"}            # 1.0 is the config default (results_aligned_ridge.json)
 CROSSLORA_RANKS=${CROSSLORA_RANKS:-"64 160 640"}  # 320 is the paper default (results_crosslora.json)
+# Paper tables go to paper/tables (which main.tex \input{}s) ONLY for the real run.
+# Any other ROOT (dry runs, variants) writes to $ROOT/tables so test numbers can
+# never leak into the paper.
+if [ "$ROOT" = "runs/qwen2_to_qwen25_1.5b" ]; then TABLES=${TABLES:-paper/tables}; else TABLES=${TABLES:-$ROOT/tables}; fi
 export TOKENIZERS_PARALLELISM=false
 export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
 mkdir -p "$ROOT"
@@ -105,7 +109,7 @@ $PY experiments/run_oracle.py --config "$CFG" --oracle-dir "$ROOT/adapters_oracl
 
 stamp "[8/9] aggregate -> $ROOT/summary.json + paper tables"
 $PY experiments/evaluate.py --config "$CFG"
-$PY paper/make_tables.py --run "$ROOT" --config "$CFG" || echo "(table build failed; summary.json is intact)"
+$PY paper/make_tables.py --run "$ROOT" --config "$CFG" --out "$TABLES" || echo "(table build failed; summary.json is intact)"
 
 stamp "[9/9] ablation grid on cached activations (anchor budget x solver x scope)"
 if done_file "$ROOT/ablations.json"; then echo "skip (exists)"; else

@@ -1,0 +1,17 @@
+{
+  "gsm8k": {
+    "metric": "accuracy",
+    "value": 0.0,
+    "svd_rank": 320
+  },
+  "agnews": {
+    "metric": "exact_match",
+    "value": 0.25,
+    "svd_rank": 320
+  },
+  "samsum": {
+    "metric": "completion_perplexity",
+    "value": 5.4013019932097865,
+    "svd_rank": 320
+  }
+}

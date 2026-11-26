@@ -1,0 +1,7 @@
+{
+  "agnews": {
+    "metric": "perplexity",
+    "value": 36.16250927635344,
+    "svd_rank": 320
+  }
+}
