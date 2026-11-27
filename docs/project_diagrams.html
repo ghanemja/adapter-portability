@@ -170,6 +170,70 @@ figcaption{color:var(--mute);font-size:15px;max-width:72ch}
   </figure>
 </div></section>
 
+<section class="band"><div class="wrap">
+  <h2>5. Can an AI stack swap parts like a software stack?</h2>
+  <p>Software layers swap because the interface between them is written down. In an AI system, the seams that carry text already swap; the seams that carry learned vectors break whenever the model is retrained.</p>
+  <figure style="margin:0">
+    <div class="scroll">
+    <svg class="d" viewBox="0 0 900 300" role="img" aria-label="The app talks to the model in text and can swap models freely; adapters, the vector store and the model's internal layers talk in learned vectors and break when the model is updated.">
+      <defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <rect class="bx" x="40" y="14" width="320" height="40"/><text x="200" y="39" text-anchor="middle">App / agent <tspan class="sm">(the frontend)</tspan></text>
+      <line class="ours" x1="200" y1="56" x2="200" y2="98" marker-start="url(#ar4)" marker-end="url(#ar4)"/>
+      <text x="214" y="82" class="oursT">text + tool schemas</text>
+      <text x="420" y="82" class="oursT">swaps: any model that speaks the format plugs in</text>
+      <rect class="bx" x="40" y="100" width="320" height="180"/><text x="56" y="124" class="head">Base model <tspan class="sm">(the backend)</tspan></text>
+      <rect class="bx" x="70" y="140" width="260" height="28"/><text x="200" y="159" text-anchor="middle" class="sm">layer 1</text>
+      <rect class="bx" x="70" y="196" width="260" height="28"/><text x="200" y="215" text-anchor="middle" class="sm">layer 2</text>
+      <rect class="bx" x="70" y="244" width="260" height="28"/><text x="200" y="263" text-anchor="middle" class="sm">layer N</text>
+      <line class="ln dash" x1="200" y1="168" x2="200" y2="194" style="stroke:var(--warn)" marker-end="url(#ar4)"/>
+      <line class="ln dash" x1="200" y1="224" x2="200" y2="242" style="stroke:var(--warn)" marker-end="url(#ar4)"/>
+      <text x="214" y="187" class="warnT" style="font-size:12.5px">residual stream</text>
+      <rect class="bx" x="500" y="136" width="190" height="40"/><text x="595" y="161" text-anchor="middle">Adapters <tspan class="sm">(plugins)</tspan></text>
+      <line class="ln dash" x1="362" y1="156" x2="498" y2="156" style="stroke:var(--warn)" marker-start="url(#ar4)" marker-end="url(#ar4)"/>
+      <text x="430" y="148" text-anchor="middle" class="warnT" style="font-size:12.5px">activations</text>
+      <rect class="bx" x="500" y="220" width="190" height="40"/><text x="595" y="245" text-anchor="middle">Vector store <tspan class="sm">(database)</tspan></text>
+      <line class="ln dash" x1="362" y1="240" x2="498" y2="240" style="stroke:var(--warn)" marker-start="url(#ar4)" marker-end="url(#ar4)"/>
+      <text x="430" y="232" text-anchor="middle" class="warnT" style="font-size:12.5px">embeddings</text>
+      <text x="710" y="152" class="warnT">breaks on a new model:</text><text x="710" y="170" class="sm">retrain every adapter</text>
+      <text x="710" y="236" class="warnT">breaks on a new model:</text><text x="710" y="254" class="sm">re-index everything</text>
+    </svg>
+    </div>
+    <figcaption>Blue seams carry text, whose meaning people wrote down, so the parts on either side swap freely. Red seams carry learned vectors whose meaning nobody declared. Retraining the model rewrites that meaning, so everything on the other side of a red seam breaks. Inside the model, layers talk over the residual stream, and this week's experiments showed attention heads don't survive a version bump as swappable units.</figcaption>
+  </figure>
+
+  <h2 style="margin-top:36px">Two ways to make a red seam swappable</h2>
+  <figure style="margin:0">
+    <div class="scroll">
+    <svg class="d" viewBox="0 0 900 290" role="img" aria-label="A contract freezes the interface so both model versions match it during training; a migration leaves the models free and ships a translator that ports every adapter to the new version.">
+      <defs><marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <text x="20" y="24" class="head">Contract: freeze the interface</text>
+      <rect class="bx" x="30" y="50" width="170" height="36"/><text x="115" y="73" text-anchor="middle">model v N</text>
+      <rect class="bx" x="230" y="50" width="170" height="36"/><text x="315" y="73" text-anchor="middle">model v N+1</text>
+      <line class="ln" x1="115" y1="86" x2="115" y2="128" marker-end="url(#ar5)"/><line class="ln" x1="315" y1="86" x2="315" y2="128" marker-end="url(#ar5)"/>
+      <text x="215" y="112" text-anchor="middle" class="sm">trained to match</text>
+      <rect class="oursbx" x="30" y="130" width="370" height="34"/><text x="215" y="152" text-anchor="middle" class="oursT">fixed shared representation</text>
+      <line class="ln" x1="215" y1="210" x2="215" y2="166" marker-end="url(#ar5)"/>
+      <text x="229" y="192" class="sm">plugs in unchanged</text>
+      <rect class="bx" x="130" y="210" width="170" height="36"/><text x="215" y="233" text-anchor="middle">adapter</text>
+      <text x="215" y="276" text-anchor="middle" class="warnT">cost: a frozen interface limits the next model</text>
+      <line x1="450" y1="10" x2="450" y2="285" stroke="var(--rule)"/>
+      <text x="480" y="24" class="head oursT">Migration: ship a translator (this project)</text>
+      <rect class="bx" x="480" y="50" width="170" height="36"/><text x="565" y="73" text-anchor="middle">model v N</text>
+      <rect class="bx" x="710" y="50" width="170" height="36"/><text x="795" y="73" text-anchor="middle">model v N+1</text>
+      <line class="ln" x1="565" y1="86" x2="565" y2="128" marker-end="url(#ar5)"/><text x="579" y="112" class="sm">trained on</text>
+      <rect class="bx" x="480" y="130" width="170" height="36"/><text x="565" y="153" text-anchor="middle">old adapter</text>
+      <path class="ours" d="M565 166V228H608" marker-end="url(#ar5)"/>
+      <rect class="oursbx" x="610" y="210" width="140" height="36"/><text x="680" y="233" text-anchor="middle" class="oursT">P_in, P_out</text>
+      <path class="ours" d="M750 228H795V168" marker-end="url(#ar5)"/>
+      <rect class="bx" x="710" y="130" width="170" height="36"/><text x="795" y="153" text-anchor="middle">ported adapter</text>
+      <line class="ln" x1="795" y1="130" x2="795" y2="88" marker-end="url(#ar5)"/><text x="809" y="112" class="sm">loads normally</text>
+      <text x="680" y="276" text-anchor="middle" class="oursT">one small file per release, serves every adapter</text>
+    </svg>
+    </div>
+    <figcaption>A contract works like a frozen public API: the vendor trains each new version to keep the shared representation compatible, so old adapters plug in unchanged, but the model loses freedom to improve. A migration works like a database schema migration: the models change freely and each release ships a translator. This project builds the migration, and the maps depend only on the two model versions, so one file serves every adapter. Some drift isn't linear, so a migration recovers most of an adapter's value, not all of it; the GPU run measures how much.</figcaption>
+  </figure>
+</div></section>
+
 <script>
 {
   const groups = [
