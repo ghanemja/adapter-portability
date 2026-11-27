@@ -65,6 +65,65 @@ distribution of inputs reaching $W_\ell$, produced by every layer upstream,
 leaves $W_\ell$'s SVD untouched. The experiments in \S\ref{sec:experiments}
 test whether that blind spot costs accuracy.
 
+\subsection{What kind of map explains the drift?}
+\label{sec:drift:structure}
+
+CKA says the activations moved but not what transformation moved them. We
+therefore ask directly how well linear maps of different structure predict a
+module's $M_v$ input from its $M_{v+1}$ input, scoring held-out $R^2$ on a 20\%
+split of 12{,}000 anchor tokens per module (Figure~\ref{fig:heads}; maps fit on
+the other 80\%; conclusions unchanged for $\lambda$ from $1$ to $100$). We
+study the two interfaces every attention adapter touches: the residual stream
+read by $q$, $k$, $v$, and the concatenated head outputs read by $o$\_proj.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/heads_qwen05b.pdf}
+\caption{How much of the Qwen2-0.5B$\to$Qwen2.5-0.5B drift each kind of linear
+map explains (held-out $R^2$ of predicting the old activation from the new,
+per layer). Left: at the residual stream, an unconstrained map beats the best
+rotation in all 24 layers. Right: at the attention output, maps restricted to
+one head at a time explain about half as much as a full map, even after
+optimally re-pairing heads between versions.}
+\label{fig:heads}
+\end{figure}
+
+\paragraph{Naive coordinates are worse than no information.}
+Using the new activation unchanged as a prediction of the old one gives a
+negative $R^2$ in every layer (mean $-1.5$ at the residual stream, $-2.4$ at
+the attention output): reading a new-version activation in old-version
+coordinates is less accurate than predicting the old activation's mean. This
+is the situation a naively transferred adapter is in.
+
+\paragraph{Drift is not a rotation.}
+At the residual stream the best orthogonal map explains a mean $R^2$ of $0.45$
+and an unconstrained ridge map $0.70$, and ridge is better in all 24 layers.
+This is the real-model counterpart of the controlled result in
+\S\ref{sec:ablations:synth}: a substantial part of version drift is
+anisotropic rescaling that no rotation, and no projection onto an orthonormal
+subspace, can express.
+
+\paragraph{Attention heads are not preserved as units.}
+If a version update kept each head's role, per-head maps would explain the
+attention-output drift as well as a full map. They explain less than half as
+much (mean $R^2$ $0.24$ versus $0.51$). Re-pairing heads between versions by
+maximizing linear CKA (Hungarian matching) moves on average $11.6$ of the $14$
+heads per layer but only raises per-head $R^2$ to $0.32$, and the full map is
+better in all 24 layers. The update therefore does not merely reorder heads; it
+redistributes information across head subspaces. Head-level modularity, the
+natural unit for a translation layer between versions, does not survive a
+version bump, which is why the method fits one map per projection rather than
+per head.
+
+\paragraph{A ceiling on linear transfer.}
+Even the full maps leave about $30\%$ of held-out residual-stream variance and
+about half of attention-output variance unexplained, with the worst layer
+(16, $R^2\approx0.2$--$0.25$) also among the most drifted by CKA. Part of this
+is finite-sample error at $9{,}600$ training tokens for $896$-dimensional maps,
+but the $\lambda$-insensitivity suggests most is drift that no per-module linear
+map captures. This bounds what any linear transplant, ours included, can
+recover at these modules.
+
 \paragraph{Drift predicts naive-transfer failure.}
 %TODO(GPU): per-module ablation -- transplant only module l naively, measure
 % degradation, correlate with drift_l. Needs the 1.5B run. Keep this paragraph

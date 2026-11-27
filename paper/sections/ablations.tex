@@ -84,7 +84,11 @@ be closer to orthogonal, and the real-pair CKA values in \S\ref{sec:drift} are
 nonzero precisely because the drift is not a rotation. This is the
 quantitative basis for predicting that any method restricted to orthonormal
 bases, including subspace projection (\S\ref{sec:method:crosslora}), leaves
-part of the recoverable gap on the table.
+part of the recoverable gap on the table. The prediction already holds at the
+level of activations on real checkpoints: at the residual stream of
+Qwen2-0.5B$\to$Qwen2.5-0.5B, unconstrained maps explain a mean held-out $R^2$
+of $0.70$ versus $0.45$ for the best rotation, and win in every layer
+(\S\ref{sec:drift:structure}).
 
 \paragraph{Regularization trades fit against sample size in the usual way.}
 At $N=100$ anchor tokens for a $64$-dimensional map the regression is barely

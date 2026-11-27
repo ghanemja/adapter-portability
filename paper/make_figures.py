@@ -125,6 +125,32 @@ def gap_figure(summary_path: Path, out: Path):
     print(f"[fig] {out}")
 
 
+def heads_figure(path: Path, out: Path):
+    """Held-out R^2 per layer: how well linear maps of different structure
+    explain version drift at the residual stream and the attention output."""
+    d = json.loads(path.read_text())
+    L = [r["layer"] for r in d["layers"]]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.5), sharey=True)
+    for key, lab, c, ls in [("full_ridge", "ridge (unconstrained)", "#4C72B0", "-"),
+                            ("orthogonal", "orthogonal", "#DD8452", "--")]:
+        ax1.plot(L, [r["residual"][key] for r in d["layers"]], marker="o", ms=3, color=c, ls=ls, label=lab)
+    ax1.set_title("residual stream (q/k/v input)", loc="left")
+    for key, lab, c, ls in [("full_ridge", "full map", "#4C72B0", "-"),
+                            ("block_matched_head", "per-head, heads matched", "#55A868", "-."),
+                            ("block_same_head", "per-head, same head", "#C44E52", ":")]:
+        ax2.plot(L, [r["o_proj"][key] for r in d["layers"]], marker="o", ms=3, color=c, ls=ls, label=lab)
+    ax2.set_title("attention output (o_proj input)", loc="left")
+    for ax in (ax1, ax2):
+        ax.set_xlabel("layer")
+        ax.set_ylim(0, 1)
+        ax.legend(frameon=False, fontsize=7)
+    ax1.set_ylabel("held-out $R^2$")
+    fig.tight_layout()
+    fig.savefig(out)
+    plt.close(fig)
+    print(f"[fig] {out}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default=None, help="run dir with drift.json / summary.json")
@@ -136,6 +162,8 @@ def main():
     drift_figure(ROOT / "runs/qwen05b_cpu/drift.json", FIG / "drift_qwen05b.pdf",
                  "Qwen2-0.5B $\\to$ Qwen2.5-0.5B, input activations")
     ablation_figure(ROOT / "runs/ablations_synth.json", FIG / "ablations_synth.pdf")
+    if (ROOT / "runs/qwen05b_heads/heads.json").exists():
+        heads_figure(ROOT / "runs/qwen05b_heads/heads.json", FIG / "heads_qwen05b.pdf")
 
     if args.run:
         run = Path(args.run)

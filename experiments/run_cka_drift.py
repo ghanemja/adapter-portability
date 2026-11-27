@@ -46,8 +46,12 @@ def main():
     args = ap.parse_args()
     cfg = load_config(args.config)
 
-    acts_v = cache_activations(cfg, "v", cfg.pair.base_v)
+    # Extract one model at a time and free it before the next, so peak RAM is
+    # one cache during extraction and two (inputs + outputs) only for the drift.
+    del_v = cache_activations(cfg, "v", cfg.pair.base_v)
+    del del_v
     acts_v_next = cache_activations(cfg, "v_next", cfg.pair.base_v_next)
+    acts_v = torch.load(cfg.out("cache", "acts_v.pt"))
 
     drifts = {
         name: drift(acts_v[name]["in"], acts_v_next[name]["in"])

@@ -1,0 +1,25 @@
+L00 o_proj R2: id -2.623 full 0.652 block 0.214 matched 0.448 moved 11 | resid R2: id -0.848 orth 0.726 ridge 0.896
+L01 o_proj R2: id -3.817 full 0.530 block 0.159 matched 0.352 moved 14 | resid R2: id -0.696 orth 0.594 ridge 0.752
+L02 o_proj R2: id -1.913 full 0.495 block 0.266 matched 0.309 moved 10 | resid R2: id -1.456 orth 0.401 ridge 0.628
+L03 o_proj R2: id -1.382 full 0.420 block 0.185 matched 0.248 moved 13 | resid R2: id -1.587 orth 0.338 ridge 0.631
+L04 o_proj R2: id -1.825 full 0.533 block 0.236 matched 0.324 moved 14 | resid R2: id -1.697 orth 0.424 ridge 0.680
+L05 o_proj R2: id -1.356 full 0.390 block 0.118 matched 0.211 moved 12 | resid R2: id -1.319 orth 0.400 ridge 0.709
+L06 o_proj R2: id -0.844 full 0.410 block 0.188 matched 0.238 moved 12 | resid R2: id -1.552 orth 0.463 ridge 0.644
+L07 o_proj R2: id -0.925 full 0.428 block 0.171 matched 0.193 moved 12 | resid R2: id -1.633 orth 0.454 ridge 0.644
+L08 o_proj R2: id -1.392 full 0.609 block 0.280 matched 0.462 moved 13 | resid R2: id -1.515 orth 0.530 ridge 0.728
+L09 o_proj R2: id -1.540 full 0.632 block 0.333 matched 0.453 moved 12 | resid R2: id -1.365 orth 0.315 ridge 0.674
+L10 o_proj R2: id -1.458 full 0.463 block 0.196 matched 0.275 moved 14 | resid R2: id -1.651 orth 0.423 ridge 0.643
+L11 o_proj R2: id -1.108 full 0.558 block 0.338 matched 0.421 moved 12 | resid R2: id -1.837 orth 0.202 ridge 0.676
+L12 o_proj R2: id -1.560 full 0.550 block 0.238 matched 0.336 moved 13 | resid R2: id -1.098 orth 0.504 ridge 0.701
+L13 o_proj R2: id -1.100 full 0.553 block 0.288 matched 0.324 moved 13 | resid R2: id -1.856 orth 0.402 ridge 0.698
+L14 o_proj R2: id -1.940 full 0.563 block 0.315 matched 0.338 moved  8 | resid R2: id -1.425 orth 0.520 ridge 0.684
+L15 o_proj R2: id -1.491 full 0.584 block 0.334 matched 0.409 moved 10 | resid R2: id -1.641 orth 0.526 ridge 0.719
+L16 o_proj R2: id -0.493 full 0.209 block 0.067 matched 0.111 moved 12 | resid R2: id -1.639 orth 0.507 ridge 0.730
+L17 o_proj R2: id -1.609 full 0.473 block 0.117 matched 0.188 moved 14 | resid R2: id -1.584 orth 0.505 ridge 0.694
+L18 o_proj R2: id -1.278 full 0.501 block 0.288 matched 0.352 moved  7 | resid R2: id -1.473 orth 0.559 ridge 0.699
+L19 o_proj R2: id -1.822 full 0.583 block 0.447 matched 0.454 moved  8 | resid R2: id -1.940 orth 0.518 ridge 0.712
+L20 o_proj R2: id -10.482 full 0.523 block 0.249 matched 0.272 moved 11 | resid R2: id -1.554 orth 0.504 ridge 0.724
+L21 o_proj R2: id -7.422 full 0.599 block 0.317 matched 0.388 moved  8 | resid R2: id -1.398 orth 0.393 ridge 0.670
+L22 o_proj R2: id -6.988 full 0.584 block 0.275 matched 0.338 moved 12 | resid R2: id -1.556 orth 0.357 ridge 0.666
+L23 o_proj R2: id -2.160 full 0.499 block 0.219 matched 0.233 moved 13 | resid R2: id -2.532 orth 0.180 ridge 0.685
+[heads] -> runs/qwen05b_heads/heads.json

@@ -1,0 +1,33 @@
+# Head-structure analysis on Qwen2-0.5B -> Qwen2.5-0.5B (CPU).
+# Hooks only q_proj (its input is the post-norm residual stream, shared with
+# k/v) and o_proj (its input is the concatenation of 14 attention-head outputs,
+# 64 dims each). Used by experiments/analyze_heads.py; no adapters involved.
+pair:
+  family: qwen
+  base_v: Qwen/Qwen2-0.5B
+  base_v_next: Qwen/Qwen2.5-0.5B
+  target_modules: [q_proj, o_proj]
+
+anchors:
+  dataset: Salesforce/wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  n_sequences: 600
+  max_length: 128
+  seed: 0
+  max_tokens: 12000        # 48 modules x 12k x (896+896) x 4B ~ 4 GB per model
+
+align:
+  method: ridge
+  ridge_lambda: 1.0
+  per_layer: true
+  center: true
+
+tasks:
+  - name: none
+    adapter_path: none
+    eval_dataset: none
+
+output_dir: runs/qwen05b_heads
+device: cpu
+dtype: float32

@@ -78,6 +78,19 @@ Config `configs/qwen05b_agnews_tiny5.yaml`, ROOT `runs/qwen05b_agnews_tiny`, 20 
 
 Plumbing verification only (20-step adapter). Ordering Cross-LoRA ≈ naive < Procrustes < ridge matches the prediction and reproduced across two independent runs (first run, lost with the container: 0.9 / 7.8 / 11.1%).
 
+### 2.6 Drift structure: rotation vs. unconstrained, heads as units (CPU, 2026-11-27)
+`experiments/analyze_heads.py`, config `configs/qwen05b_heads.yaml` (q_proj + o_proj only, 12k anchor tokens/module), output `runs/qwen05b_heads/heads.json`, figure `paper/figures/heads_qwen05b.pdf`, text in drift.tex §5.1. Held-out R² of predicting the v activation from the v+1 activation, mean over 24 layers:
+
+| interface | identity (naive) | orthogonal | ridge / full map | per-head, same head | per-head, matched |
+|---|---|---|---|---|---|
+| residual stream (q/k/v input) | −1.54 | 0.45 | **0.70** | — | — |
+| attention output (o_proj input) | −2.44 | — | **0.51** | 0.24 | 0.32 |
+
+- Ridge beats the best rotation in **24/24 layers**: real-model evidence that drift is non-orthogonal (the synthetic ablation's claim, now on real activations).
+- **Heads are not preserved across versions.** CKA-matching moves 11.6/14 heads per layer and still explains far less than a full map (24/24 layers). So no head-level modularity; one map per projection is required.
+- **Linear ceiling:** ~30% (residual) and ~49% (o_proj) of held-out variance is not linearly recoverable at this anchor budget; layer 16 o_proj worst. Conclusions stable for λ ∈ [1, 100].
+- Also verified: fitting the adapter's own features (A' x_{v+1} ≈ A x_v) gives exactly A·P_in for ridge, to float precision. The version-level shim is already adapter-optimal on the input side, so one shim per release serves every adapter (method.tex §4.3).
+
 ### 2.4 Attempted 150-step run (CPU, 2026-07-06) — DIED
 `runs/s150_cpu.log`, config `configs/qwen05b_agnews_s150.yaml`. Reached step 27/150 at 1–3 min/step, then session teardown killed it. `runs/qwen05b_agnews_s150/` contains only `adapters_v/`. Do not try again on CPU.
 
@@ -230,6 +243,7 @@ Remaining zero-compute work: abstract numbers, README.md rewrite, per-module dri
 - **Cloud containers are ephemeral.** On 2026-10-25 two unpushed commits were lost when the container was reclaimed and had to be rebuilt on 2026-11-26. Push after every commit. Cloud containers also lack `.venv`: `python3 -m venv .venv && .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu && .venv/bin/pip install -r requirements.txt matplotlib`.
 - Dry runs must not use ROOT=runs/qwen2_to_qwen25_1.5b: only that ROOT writes into `paper/tables/` (guard added after a dry run leaked test tables there).
 - `run_ablations.py` real mode fits shared maps per (d_in, d_out) group (GQA shapes crashed the old global concat).
+- **Memory (fixed 2026-11-27):** extraction used to build lists then torch.cat (2x peak) and the drift stage held model v's cache while extracting v+1. That OOM-killed a 0.5B run on 15 GB and would have peaked ~54 GB at 1.5B. `extract.py` now fills preallocated buffers and `run_cka_drift.py` extracts one model at a time; 1.5B peak ≈ 2 caches ≈ 36 GB, so the ≥48 GB host advice in docs/GPU_RUN.md holds.
 - Local machine: CPU only, 8.5 GB RAM, torch defaults to 2 threads. 0.5B activation extraction ≈ minutes per 64 sequences. Training 1–3 min/step. Not viable beyond smoke tests.
 - Background jobs die on session teardown.
 - HF Hub unauthenticated warnings in logs are harmless but set `HF_TOKEN` for gated Gemma.

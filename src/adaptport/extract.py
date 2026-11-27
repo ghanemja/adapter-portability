@@ -62,8 +62,11 @@ def extract_activations(
         raise ValueError(f"no modules matched {target_substrings}")
 
     gen = torch.Generator().manual_seed(seed)
-    flat_in: dict[str, list[torch.Tensor]] = {n: [] for n in modules}
-    flat_out: dict[str, list[torch.Tensor]] = {n: [] for n in modules}
+    # Preallocated (max_tokens, d) buffers filled in place: peak memory is one
+    # copy of the cache, not two (list-of-chunks + torch.cat doubled it and
+    # OOM-killed extraction at max_tokens=12k on a 15 GB box).
+    buf_in: dict[str, torch.Tensor] = {}
+    buf_out: dict[str, torch.Tensor] = {}
     kept = 0
 
     with _capture(modules) as store:
@@ -81,16 +84,25 @@ def extract_activations(
                 if idx.numel() > room:
                     perm = torch.randperm(idx.numel(), generator=gen)[:room]
                     idx = idx[perm]
+                k = idx.numel()
                 for n in modules:
                     x, y = store[n][0]                   # one call per forward
                     d_in, d_out = x.shape[-1], y.shape[-1]
-                    flat_in[n].append(x.reshape(-1, d_in)[idx])
-                    flat_out[n].append(y.reshape(-1, d_out)[idx])
-                kept += idx.numel()
+                    if n not in buf_in:
+                        buf_in[n] = torch.empty(max_tokens, d_in)
+                        buf_out[n] = torch.empty(max_tokens, d_out)
+                    buf_in[n][kept:kept + k] = x.reshape(-1, d_in)[idx]
+                    buf_out[n][kept:kept + k] = y.reshape(-1, d_out)[idx]
+                kept += k
             if kept >= max_tokens:
                 break
 
-    return {
-        n: {"in": torch.cat(flat_in[n], 0), "out": torch.cat(flat_out[n], 0)}
-        for n in modules
-    }
+    if kept == 0:
+        raise ValueError("anchor loader produced no non-pad tokens")
+    out = {}
+    for n in modules:
+        if kept == max_tokens:
+            out[n] = {"in": buf_in.pop(n), "out": buf_out.pop(n)}
+        else:   # clone so the saved tensor does not drag the unused tail along
+            out[n] = {"in": buf_in.pop(n)[:kept].clone(), "out": buf_out.pop(n)[:kept].clone()}
+    return out

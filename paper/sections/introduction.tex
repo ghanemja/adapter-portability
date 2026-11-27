@@ -70,9 +70,11 @@ recovers on tasks where that gap is large (\S\ref{sec:experiments}).
   \item \textbf{A per-module drift study on real checkpoints.} Using linear CKA
         over unlabeled anchor activations, we characterize where and how much
         the activation geometry of LoRA-target modules moves between versions,
-        and show that the drift is non-orthogonal, module-specific, largest at
-        the attention-output projection, and increasing with depth
-        (\S\ref{sec:drift}).
+        and show that the drift is non-orthogonal (unconstrained maps beat the
+        best rotation in every layer), module-specific, largest at the
+        attention-output projection, and not organized by attention head: a
+        version bump redistributes information across heads rather than
+        reordering them (\S\ref{sec:drift}).
   \item \textbf{Activation-grounded closed-form alignment.} We derive the
         rank-preserving transplant and fit its maps by ridge regression or
         orthogonal Procrustes on anchor activations, in seconds, from a single

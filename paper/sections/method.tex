@@ -73,6 +73,22 @@ serialization format and loads onto $M_{v+1}$ with standard PEFT tooling. No
 new parameters are introduced and inference cost is identical to the original
 adapter. Modules that were not adapted need no map.
 
+\paragraph{One map serves every adapter.}
+The maps depend only on the two base checkpoints, not on the adapter, so they
+can be fit once per version pair and applied to an entire adapter library. This
+costs nothing in fit quality on the input side. Suppose instead we fit the
+adapter's read-out directly, choosing $A'$ to minimize
+$\lVert H^{\mathrm{in},v+1}A'^\top-H^{\mathrm{in},v}A^\top\rVert_F^2+\lambda\lVert A'\rVert_F^2$,
+so that the transplanted adapter computes the same $r$ features on the new
+model as the original did on the old. The solution is
+$A'^\top=(S^\top S+\lambda I)^{-1}S^\top TA^\top$ with $S,T$ as in
+Eq.~\eqref{eq:ridge}, which is exactly $A P^{\mathrm{in}}$ for the ridge map:
+least squares decomposes over target coordinates, so the adapter-agnostic map
+is already the adapter-optimal one for every adapter and every $\lambda$. (We
+confirm this numerically to float precision.) A vendor could therefore publish
+$\{P^{\mathrm{in}}_\ell,P^{\mathrm{out}}_\ell\}$ alongside a release as a
+compatibility artifact, with no per-adapter refitting.
+
 \begin{algorithm}[t]
 \caption{Activation-aligned adapter transplant}
 \label{alg:transplant}
