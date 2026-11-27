@@ -1,0 +1,194 @@
+<title>Adapter Portability Overview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: technical explainer for the project owner and future readers
+   IDEA scientific plate: exact mechanism drawings with captions, like a methods figure
+   PICTURE the translation layer drawn as a signal path, naive vs ours, the edge that differs
+   COLOUR white, ink #10131a, prussian #0b4f8a for this project's method, carmine #c1121f for mismatch and blockers
+   TYPE Literata 600 display + Literata text
+   LAYOUT laptop: title and status left, first diagram full width beneath; phone: stack, diagrams scroll sideways */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0f1217);--ink:light-dark(#10131a,#e6e8ee);--mute:light-dark(#5b6170,#9aa1b0);--rule:light-dark(#d9dce3,#2a2f3a);--panel:light-dark(#f4f6f9,#171b23);--ours:light-dark(#0b4f8a,#6fb0ee);--warn:light-dark(#c1121f,#ff6b72)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Literata,Georgia,serif;overflow-x:clip}
+.band{padding-block:clamp(24px,4vw,56px);padding-left:max(5vw,16px,env(safe-area-inset-left,0px));padding-right:max(5vw,16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:clamp(30px,4.4vw,46px);line-height:1.08;letter-spacing:-.02em;font-weight:600;margin:0 0 14px;max-width:22ch}
+h2{font-size:24px;line-height:1.2;letter-spacing:-.01em;font-weight:600;margin:0 0 6px}
+p{margin:0 0 12px;max-width:68ch}
+.lede{font-size:18px;color:var(--ink)}
+.top{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(20px,4vw,56px);align-items:start}
+.status{border-top:2px solid var(--ink);padding-top:12px}
+.status div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--rule)}
+.status b{font-weight:600;white-space:nowrap}
+.ok{color:var(--ours)}.no{color:var(--warn)}
+section{border-top:1px solid var(--rule)}
+.scroll{overflow-x:auto;margin:18px 0 6px}
+svg.d{display:block;width:100%;min-width:720px;height:auto;color:var(--ink);font-family:Literata,Georgia,serif}
+.d text{fill:currentColor;font-size:14px}
+.d .sm{font-size:12.5px;fill:var(--mute)}
+.d .bx{fill:var(--panel);stroke:currentColor;stroke-width:1.2}
+.d .ln{stroke:currentColor;stroke-width:1.4;fill:none}
+.d .ours{stroke:var(--ours);fill:none;stroke-width:2.2}
+.d .oursbx{fill:var(--panel);stroke:var(--ours);stroke-width:2.2}
+.d .oursT{fill:var(--ours);font-weight:600}
+.d .warnT{fill:var(--warn)}
+.d .warnbx{fill:var(--panel);stroke:var(--warn);stroke-width:2;stroke-dasharray:5 4}
+.d .dash{stroke-dasharray:5 4}
+.d .head{font-weight:600;font-size:15px}
+figcaption{color:var(--mute);font-size:15px;max-width:72ch}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(20px,4vw,48px);margin-top:18px}
+.bars h3{font-size:17px;margin:0 0 8px;font-weight:600}
+.row{display:grid;grid-template-columns:minmax(9em,13em) minmax(0,1fr) 3.4em;gap:10px;align-items:center;padding:5px 0;font-size:15px}
+.track{height:14px;background:var(--panel);position:relative}
+.fill{position:absolute;inset:0 auto 0 0;background:var(--mute)}
+.fill.best{background:var(--ours)}
+.val{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.neg{color:var(--warn);font-size:13px}
+.note{font-size:14px;color:var(--mute);margin-top:8px}
+@media(max-width:760px){.top,.grid2{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:minmax(7em,9em) minmax(0,1fr) 3em}}
+</style>
+
+<div class="band"><div class="wrap top">
+  <div>
+    <h1>One GPU run decides whether reading activations beats reading weights</h1>
+    <p class="lede">A LoRA adapter trained on one version of a model breaks a little on the next version, because the model's internal coordinates move. This project fits a small translation layer from unlabeled text so the old adapter works on the new model, with no task data and no retraining.</p>
+  </div>
+  <div class="status">
+    <div><b class="ok">Done</b><span>Pipeline, Cross-LoRA baseline, CPU checks, drift study, paper sections</span></div>
+    <div><b class="ok">Done</b><span>All work pushed to GitHub, branch claude/wizardly-mendel-uupsel</span></div>
+    <div><b class="no">Blocked</b><span>The 1.5B comparison needs a rented A100: about 2 hours, about $4</span></div>
+    <div><b>Decides</b><span>Continue only if ridge beats Cross-LoRA by at least 10 points</span></div>
+  </div>
+</div></div>
+
+<section class="band"><div class="wrap">
+  <h2>1. What the translation layer does inside one module</h2>
+  <figure style="margin:0">
+    <div class="scroll">
+    <svg class="d" viewBox="0 0 900 340" role="img" aria-label="Naive transfer feeds new-version coordinates straight into the old adapter; the translation layer converts them in and out with P_in and P_out.">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <text x="20" y="24" class="head">Naive: drop the old adapter onto the new model</text>
+      <rect class="bx" x="20" y="42" width="110" height="36"/><text x="75" y="65" text-anchor="middle">input x</text>
+      <line class="ln" x1="130" y1="60" x2="358" y2="60" marker-end="url(#ar)"/>
+      <rect class="bx" x="360" y="42" width="120" height="36"/><text x="420" y="65" text-anchor="middle">W (new model)</text>
+      <line class="ln" x1="480" y1="60" x2="704" y2="60" marker-end="url(#ar)"/>
+      <circle class="bx" cx="720" cy="60" r="15"/><text x="720" y="65" text-anchor="middle">+</text>
+      <line class="ln" x1="735" y1="60" x2="798" y2="60" marker-end="url(#ar)"/><text x="806" y="65">output</text>
+      <path class="ln" d="M75 78V120H288" marker-end="url(#ar)"/>
+      <text x="180" y="111" text-anchor="middle" class="warnT">read as if old</text>
+      <rect class="bx" x="290" y="102" width="60" height="36"/><text x="320" y="125" text-anchor="middle">A</text>
+      <line class="ln" x1="350" y1="120" x2="468" y2="120" marker-end="url(#ar)"/><text x="409" y="111" text-anchor="middle" class="sm">r features</text>
+      <rect class="bx" x="470" y="102" width="60" height="36"/><text x="500" y="125" text-anchor="middle">B</text>
+      <path class="ln" d="M530 120H720V77" marker-end="url(#ar)"/>
+      <text x="625" y="111" text-anchor="middle" class="warnT">written as if old</text>
+
+      <text x="20" y="184" class="head">This project: convert coordinates in and out</text>
+      <rect class="bx" x="20" y="202" width="110" height="36"/><text x="75" y="225" text-anchor="middle">input x</text>
+      <line class="ln" x1="130" y1="220" x2="358" y2="220" marker-end="url(#ar)"/>
+      <rect class="bx" x="360" y="202" width="120" height="36"/><text x="420" y="225" text-anchor="middle">W (new model)</text>
+      <line class="ln" x1="480" y1="220" x2="704" y2="220" marker-end="url(#ar)"/>
+      <circle class="bx" cx="720" cy="220" r="15"/><text x="720" y="225" text-anchor="middle">+</text>
+      <line class="ln" x1="735" y1="220" x2="798" y2="220" marker-end="url(#ar)"/><text x="806" y="225">output</text>
+      <path class="ln" d="M75 238V280H148" marker-end="url(#ar)"/>
+      <rect class="oursbx" x="150" y="262" width="80" height="36"/><text x="190" y="285" text-anchor="middle" class="oursT">P_in</text>
+      <line class="ours" x1="230" y1="280" x2="288" y2="280" marker-end="url(#ar)"/>
+      <rect class="bx" x="290" y="262" width="60" height="36"/><text x="320" y="285" text-anchor="middle">A</text>
+      <line class="ln" x1="350" y1="280" x2="468" y2="280" marker-end="url(#ar)"/><text x="409" y="271" text-anchor="middle" class="sm">r features</text>
+      <rect class="bx" x="470" y="262" width="60" height="36"/><text x="500" y="285" text-anchor="middle">B</text>
+      <line class="ours" x1="530" y1="280" x2="578" y2="280" marker-end="url(#ar)"/>
+      <rect class="oursbx" x="580" y="262" width="80" height="36"/><text x="620" y="285" text-anchor="middle" class="oursT">P_out</text>
+      <path class="ours" d="M660 280H720V237" marker-end="url(#ar)"/>
+      <text x="190" y="318" text-anchor="middle" class="sm">new → old coords</text>
+      <text x="620" y="318" text-anchor="middle" class="sm">old → new coords</text>
+    </svg>
+    </div>
+    <figcaption>The adapter's A reads coordinates and B writes them. On a new model version those coordinates have moved, so the naive adapter reads and writes in the wrong basis. P_in and P_out convert in and out. They multiply into A and B, so the result is an ordinary adapter of the same size with no extra inference cost, and one pair of maps per release serves every adapter.</figcaption>
+  </figure>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>2. The comparison that decides the paper</h2>
+  <figure style="margin:0">
+    <div class="scroll">
+    <svg class="d" viewBox="0 0 900 320" role="img" aria-label="Cross-LoRA derives its correction from the new model's weight matrix alone; this project runs the same unlabeled text through both models and fits maps on their activations.">
+      <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <text x="20" y="24" class="head">Cross-LoRA: reads the weights</text>
+      <text x="215" y="80" text-anchor="middle" class="warnT">no text ever runs through either model</text>
+      <rect class="bx" x="20" y="120" width="170" height="36"/><text x="105" y="143" text-anchor="middle">W, old model</text>
+      <rect class="bx" x="240" y="120" width="170" height="36"/><text x="325" y="143" text-anchor="middle">W, new model</text>
+      <path class="ln dash" d="M105 156V180H200" marker-end="url(#ar2)"/><text x="105" y="196" text-anchor="middle" class="sm">drops out at equal size</text>
+      <path class="ln" d="M325 156V203" marker-end="url(#ar2)"/>
+      <rect class="bx" x="205" y="205" width="200" height="36"/><text x="305" y="228" text-anchor="middle">top-k SVD of new W</text>
+      <line class="ln" x1="305" y1="241" x2="305" y2="262" marker-end="url(#ar2)"/>
+      <rect class="bx" x="165" y="264" width="240" height="36"/><text x="285" y="287" text-anchor="middle">project ΔW onto that subspace</text>
+      <line x1="450" y1="10" x2="450" y2="310" stroke="var(--rule)"/>
+      <text x="480" y="24" class="head oursT">This project: reads the activations</text>
+      <rect class="oursbx" x="600" y="52" width="190" height="36"/><text x="695" y="75" text-anchor="middle">generic text, no labels</text>
+      <path class="ours" d="M650 88L585 126" marker-end="url(#ar2)"/><path class="ours" d="M740 88L805 126" marker-end="url(#ar2)"/>
+      <text x="695" y="114" text-anchor="middle" class="sm">same tokens</text>
+      <rect class="bx" x="480" y="128" width="190" height="36"/><text x="575" y="151" text-anchor="middle">old model</text>
+      <rect class="bx" x="720" y="128" width="170" height="36"/><text x="805" y="151" text-anchor="middle">new model</text>
+      <path class="ln" d="M575 164L640 203" marker-end="url(#ar2)"/><path class="ln" d="M805 164L750 203" marker-end="url(#ar2)"/>
+      <text x="695" y="186" text-anchor="middle" class="sm">hooks record</text>
+      <rect class="bx" x="570" y="205" width="250" height="36"/><text x="695" y="228" text-anchor="middle">activations at every module</text>
+      <line class="ln" x1="695" y1="241" x2="695" y2="262" marker-end="url(#ar2)"/>
+      <rect class="oursbx" x="570" y="264" width="250" height="36"/><text x="695" y="287" text-anchor="middle" class="oursT">ridge fit: P_in, P_out</text>
+    </svg>
+    </div>
+    <figcaption>When the two versions have the same size, Cross-LoRA reduces exactly to projecting the adapter onto the new weight matrix's strongest directions. It cannot see a change in what a module receives from the layers above it, which is what this project measures directly.</figcaption>
+  </figure>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>3. What the CPU experiments found</h2>
+  <p>Held-out fit of predicting the old model's activation from the new one, averaged over 24 layers of Qwen2-0.5B to Qwen2.5-0.5B. 1.0 is a perfect translation.</p>
+  <div class="grid2" id="bars"></div>
+  <p class="note">Unconstrained maps beat the best rotation in all 24 layers, and the full map beats per-head maps in all 24 layers. The tiny transfer run uses 20-step adapters, so it checks the pipeline rather than proving the method.</p>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>4. Where the project is, and what happens next</h2>
+  <figure style="margin:0">
+    <div class="scroll">
+    <svg class="d" viewBox="0 0 900 240" role="img" aria-label="Four completed stages lead to the blocked GPU run, whose result goes through a 10-point decision gate.">
+      <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <g id="done"></g>
+      <path class="ln" d="M780 76V102H145V128" marker-end="url(#ar3)"/>
+      <rect class="warnbx" x="20" y="130" width="250" height="48"/><text x="145" y="151" text-anchor="middle" class="warnT">GPU run on the 1.5B pair</text><text x="145" y="169" text-anchor="middle" class="sm">needs an A100, about $4</text>
+      <line class="ln" x1="270" y1="154" x2="318" y2="154" marker-end="url(#ar3)"/>
+      <path class="bx" d="M410 118L500 154L410 190L320 154Z"/><text x="410" y="150" text-anchor="middle" style="font-size:13px">ridge beats</text><text x="410" y="167" text-anchor="middle" style="font-size:13px">Cross-LoRA by 10+?</text>
+      <path class="ours" d="M500 154H530V126H568" marker-end="url(#ar3)"/><text x="540" y="118" class="sm">yes</text>
+      <rect class="oursbx" x="570" y="108" width="310" height="36"/><text x="725" y="131" text-anchor="middle">write it up: TMLR or ICML 2027</text>
+      <path class="ln" d="M500 154H530V194H568" marker-end="url(#ar3)"/><text x="540" y="214" class="sm">no</text>
+      <rect class="bx" x="570" y="176" width="310" height="36"/><text x="725" y="199" text-anchor="middle">stop, or publish the drift study</text>
+    </svg>
+    </div>
+    <figcaption>Everything that can run on a CPU is done and pushed. The 10-point threshold was fixed before any GPU result, so the result cannot be read generously after the fact.</figcaption>
+  </figure>
+</div></section>
+
+<script>
+{
+  const groups = [
+    {t:"Residual stream: is drift a rotation?", rows:[["Naive (coordinates as-is)",-1.54],["Best rotation",0.45],["Unconstrained ridge",0.70,1]]},
+    {t:"Attention output: are heads modular?", rows:[["Naive (coordinates as-is)",-2.44],["Per head, same head",0.24],["Per head, heads re-paired",0.32],["Full map",0.51,1]]},
+    {t:"Tiny transfer run: gap recovered (%)", rows:[["Cross-LoRA",0.1],["Procrustes",9.6],["Ridge",11.7,1]], scale:100}
+  ];
+  document.getElementById("bars").innerHTML = groups.map(g => `<div class="bars"><h3>${g.t}</h3>` + g.rows.map(([l,v,best]) => {
+    const s = g.scale || 1;
+    const bar = v < 0 ? `<span class="neg">below zero: worse than guessing the average</span>` :
+      `<div class="track"><div class="fill${best?" best":""}" style="width:${Math.min(100,100*v/s)}%"></div></div>`;
+    return `<div class="row"><span>${l}</span>${bar}<span class="val">${g.scale ? v.toFixed(1) : v.toFixed(2)}</span></div>`;
+  }).join("") + `</div>`).join("");
+
+  const done = ["Pipeline + baseline","CPU check: order holds","Drift structure study","GPU job: one command"];
+  document.getElementById("done").innerHTML = done.map((d,i) => {
+    const x = 10 + i*222;
+    const arrow = i < 3 ? `<line class="ln" x1="${x+200}" y1="58" x2="${x+220}" y2="58" marker-end="url(#ar3)"/>` : "";
+    return `<rect class="bx" x="${x}" y="40" width="200" height="36"/><text x="${x+100}" y="63" text-anchor="middle">${d}</text>` + arrow;
+  }).join("");
+}
+</script>
